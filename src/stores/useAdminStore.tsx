@@ -35,10 +35,19 @@ const initialTags: TagDef[] = [
   { id: 't4', name: 'Urgente', color: '#f59e0b', category: 'Follow-up' },
 ]
 
+const initialPipelineStages: PipelineStage[] = [
+  { id: 's1', name: 'NOVO LEAD', order: 0, autoTags: [], autoTasks: [] },
+  { id: 's2', name: 'EM QUALIFICAÇÃO', order: 1, autoTags: [], autoTasks: [] },
+  { id: 's3', name: 'AGUARDANDO DOCUMENTOS', order: 2, autoTags: [], autoTasks: [] },
+  { id: 's4', name: 'ANÁLISE JURÍDICA', order: 3, autoTags: [], autoTasks: [] },
+  { id: 's5', name: 'CONTRATO ENVIADO', order: 4, autoTags: [], autoTasks: [] },
+  { id: 's6', name: 'GANHO', order: 5, autoTags: [], autoTasks: [] },
+]
+
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>([])
   const [tags, setTags] = useState<TagDef[]>(initialTags)
-  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([])
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(initialPipelineStages)
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     prompt: '',
     model: 'gpt-4o',

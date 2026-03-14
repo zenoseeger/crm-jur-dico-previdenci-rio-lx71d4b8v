@@ -21,7 +21,7 @@ interface LeadCardProps {
 
 export function LeadCard({ lead, onOpen }: LeadCardProps) {
   const { moveLead } = useLeadStore()
-  const { pipelineStages, tags: adminTags } = useAdminStore()
+  const { pipelineStages, tags: adminTags, aiFlows } = useAdminStore()
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('leadId', lead.id)
@@ -30,13 +30,29 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
   const getHeatColor = (heat: string) => {
     switch (heat) {
       case 'Quente':
+      case 'Hot':
         return 'bg-destructive text-destructive-foreground'
       case 'Morno':
-        return 'bg-warning text-warning-foreground'
+      case 'Warm':
+        return 'bg-orange-500 text-white'
       case 'Frio':
-        return 'bg-muted-foreground text-secondary-foreground'
+      case 'Cold':
+        return 'bg-blue-500 text-white'
       default:
         return 'bg-muted text-muted-foreground'
+    }
+  }
+
+  const getLocalizedHeat = (heat: string) => {
+    switch (heat) {
+      case 'Hot':
+        return 'Quente'
+      case 'Warm':
+        return 'Morno'
+      case 'Cold':
+        return 'Frio'
+      default:
+        return heat
     }
   }
 
@@ -50,6 +66,10 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
   const hasPending = pendingTasks.length > 0
   const now = new Date()
   const hasOverdue = pendingTasks.some((t) => t.dueDate && new Date(t.dueDate) < now)
+
+  const activeFlow = lead.activeFlows && lead.activeFlows.length > 0 ? lead.activeFlows[0] : null
+  const flowDetails = activeFlow ? aiFlows.find((f) => f.id === activeFlow.flowId) : null
+  const totalSteps = flowDetails?.steps?.length || 0
 
   return (
     <Card
@@ -72,7 +92,7 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
               {lead.name}
             </h4>
             <div className="flex items-center text-xs text-muted-foreground gap-1">
-              <MessageCircle className="w-3 h-3 text-success" />
+              <MessageCircle className="w-3 h-3 text-emerald-500" />
               <span>{lead.phone}</span>
             </div>
           </div>
@@ -107,7 +127,7 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
             variant="secondary"
             className={cn('text-[10px] px-1.5 py-0', getHeatColor(lead.heat))}
           >
-            {lead.heat}
+            {getLocalizedHeat(lead.heat)}
           </Badge>
           {lead.tags.slice(0, 2).map((tag) => {
             const tagDef = adminTags.find((t) => t.name === tag)
@@ -181,18 +201,18 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
                 <span>{lead.timeInStage}</span>
               </div>
 
-              {lead.activeFlows && lead.activeFlows.length > 0 && (
+              {activeFlow && (
                 <Tooltip>
                   <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1 ml-1 bg-primary/10 text-primary px-1 rounded text-[9px] font-bold border border-primary/20 cursor-help transition-all hover:bg-primary/20">
                       <Workflow className="w-2.5 h-2.5" />
                       <span>
-                        Seq {Math.max(...lead.activeFlows.map((f) => f.currentStepOrder))}
+                        {activeFlow.currentStepOrder}/{totalSteps > 0 ? totalSteps : '?'}
                       </span>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs z-50">
-                    Fluxo de Follow-up IA Ativo
+                    Fluxo IA Ativo: {flowDetails?.name || 'Desconhecido'}
                   </TooltipContent>
                 </Tooltip>
               )}
