@@ -58,7 +58,9 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
 
   const handleMove = (e: React.MouseEvent, stageName: string) => {
     e.stopPropagation()
-    const stage = pipelineStages.find((s) => s.name === stageName)
+    const stage = pipelineStages.find(
+      (s) => s.name === stageName && s.pipelineId === lead.pipelineId,
+    )
     moveLead(lead.id, stageName, undefined, stage?.autoTags, stage?.autoTasks)
   }
 
@@ -69,6 +71,11 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
 
   const activeFlow = lead.activeFlows && lead.activeFlows.length > 0 ? lead.activeFlows[0] : null
   const flowDetails = activeFlow ? aiFlows.find((f) => f.id === activeFlow.flowId) : null
+
+  const activeStage = pipelineStages.find(
+    (s) => s.name === lead.stage && s.pipelineId === lead.pipelineId,
+  )
+  const stepNumber = activeStage ? activeStage.order + 1 : 0
 
   return (
     <Card
@@ -104,7 +111,12 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {pipelineStages
-                .filter((s) => s.name !== lead.stage && s.name !== 'PERDIDO')
+                .filter(
+                  (s) =>
+                    s.pipelineId === lead.pipelineId &&
+                    s.name !== lead.stage &&
+                    s.name !== 'PERDIDO',
+                )
                 .slice(0, 3)
                 .map((stage) => (
                   <DropdownMenuItem key={stage.id} onClick={(e) => handleMove(e, stage.name)}>
@@ -216,7 +228,17 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
               </Tooltip>
             )}
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              {stepNumber > 0 && (
+                <div
+                  className="flex items-center gap-1 font-medium text-primary/80"
+                  title={`Passo ${stepNumber} do Pipeline`}
+                >
+                  <span className="px-1.5 py-0.5 rounded-sm bg-primary/10 leading-none">
+                    Etapa {stepNumber}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-1" title="Tempo na etapa">
                 <Clock className="w-3 h-3 opacity-50" />
                 <span>{lead.timeInStage}</span>

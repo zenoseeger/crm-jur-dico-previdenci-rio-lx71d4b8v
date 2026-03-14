@@ -20,8 +20,15 @@ export interface Task {
   stepOrder?: number
 }
 
+export interface Pipeline {
+  id: string
+  name: string
+  userIds: string[]
+}
+
 export interface PipelineStage {
   id: string
+  pipelineId: string
   name: string
   order: number
   autoTags: string[]
@@ -32,6 +39,7 @@ export interface Lead {
   id: string
   name: string
   phone: string
+  pipelineId: string
   stage: Stage
   heat: HeatScore
   tags: string[]
@@ -61,7 +69,6 @@ export interface DocumentReq {
   status: 'ok' | 'pending' | 'rejected'
 }
 
-// Admin Types
 export type UserRole = 'Admin' | 'SDR' | 'Closer' | 'Advogado'
 
 export interface User {

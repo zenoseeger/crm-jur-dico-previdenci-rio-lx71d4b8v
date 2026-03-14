@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import useLeadStore from '@/stores/useLeadStore'
 import { useAdminStore } from '@/stores/useAdminStore'
 import { KanbanColumn } from './KanbanColumn'
@@ -6,24 +6,63 @@ import { LeadDrawer } from './LeadDrawer'
 import { LostLeadDialog } from './LostLeadDialog'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { FolderKanban } from 'lucide-react'
 
 export function KanbanBoard() {
-  const { leads, moveLead, setSelectedLead } = useLeadStore()
-  const { pipelineStages } = useAdminStore()
+  const { leads, currentPipelineId, setCurrentPipelineId, setSelectedLead, moveLead } =
+    useLeadStore()
+  const { pipelines, pipelineStages, currentUser } = useAdminStore()
   const isMobile = useIsMobile()
+
+  const allowedPipelines = pipelines.filter((p) =>
+    currentUser ? p.userIds.includes(currentUser.id) : true,
+  )
+
+  useEffect(() => {
+    if (
+      (!currentPipelineId || !allowedPipelines.find((p) => p.id === currentPipelineId)) &&
+      allowedPipelines.length > 0
+    ) {
+      setCurrentPipelineId(allowedPipelines[0].id)
+    }
+  }, [allowedPipelines, currentPipelineId, setCurrentPipelineId])
 
   const [lostDialogOpen, setLostDialogOpen] = useState(false)
   const [pendingMove, setPendingMove] = useState<{ id: string; stage: string } | null>(null)
 
-  const sortedStages = [...pipelineStages].sort((a, b) => a.order - b.order)
+  const activePipeline =
+    allowedPipelines.find((p) => p.id === currentPipelineId) || allowedPipelines[0]
+
+  const sortedStages = activePipeline
+    ? pipelineStages
+        .filter((s) => s.pipelineId === activePipeline.id)
+        .sort((a, b) => a.order - b.order)
+    : []
+
+  const activeLeads = activePipeline ? leads.filter((l) => l.pipelineId === activePipeline.id) : []
+
+  const [activeTab, setActiveTab] = useState(sortedStages[0]?.name || '')
+
+  useEffect(() => {
+    if (sortedStages.length > 0 && !sortedStages.find((s) => s.name === activeTab)) {
+      setActiveTab(sortedStages[0].name)
+    }
+  }, [sortedStages, activeTab])
 
   const handleDrop = (leadId: string, toStageName: string) => {
     if (toStageName === 'PERDIDO') {
       setPendingMove({ id: leadId, stage: toStageName })
       setLostDialogOpen(true)
     } else {
-      const targetStage = pipelineStages.find((s) => s.name === toStageName)
+      const targetStage = sortedStages.find((s) => s.name === toStageName)
       if (targetStage) {
         moveLead(leadId, targetStage.name, undefined, targetStage.autoTags, targetStage.autoTasks)
       } else {
@@ -34,7 +73,7 @@ export function KanbanBoard() {
 
   const confirmLost = (reason: string) => {
     if (pendingMove) {
-      const targetStage = pipelineStages.find((s) => s.name === pendingMove.stage)
+      const targetStage = sortedStages.find((s) => s.name === pendingMove.stage)
       moveLead(
         pendingMove.id,
         pendingMove.stage,
@@ -46,10 +85,36 @@ export function KanbanBoard() {
     }
   }
 
+  if (allowedPipelines.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full p-8 text-center text-muted-foreground animate-fade-in">
+        Você não possui acesso a nenhum pipeline no momento.
+      </div>
+    )
+  }
+
   if (isMobile) {
     return (
       <div className="flex flex-col h-full bg-background p-4 animate-fade-in">
-        <Tabs defaultValue={sortedStages[0]?.name || ''} className="w-full flex-1 flex flex-col">
+        <div className="mb-4">
+          <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
+            <SelectTrigger className="w-full font-semibold">
+              <SelectValue placeholder="Selecione um Pipeline" />
+            </SelectTrigger>
+            <SelectContent>
+              {allowedPipelines.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full flex-1 flex flex-col"
+        >
           <TabsList className="w-full h-auto flex-wrap justify-start gap-2 bg-transparent p-0 mb-4">
             {sortedStages.map((stage) => (
               <TabsTrigger
@@ -57,7 +122,7 @@ export function KanbanBoard() {
                 value={stage.name}
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs py-1.5 px-3 border border-border"
               >
-                {stage.name} ({leads.filter((l) => l.stage === stage.name).length})
+                {stage.name} ({activeLeads.filter((l) => l.stage === stage.name).length})
               </TabsTrigger>
             ))}
           </TabsList>
@@ -71,7 +136,7 @@ export function KanbanBoard() {
               >
                 <KanbanColumn
                   title={stage.name}
-                  leads={leads.filter((l) => l.stage === stage.name)}
+                  leads={activeLeads.filter((l) => l.stage === stage.name)}
                   onDrop={handleDrop}
                   onOpenLead={setSelectedLead}
                 />
@@ -90,14 +155,34 @@ export function KanbanBoard() {
   }
 
   return (
-    <div className="flex h-full w-full bg-background/50 overflow-hidden animate-fade-in">
-      <ScrollArea className="w-full h-full" orientation="horizontal">
+    <div className="flex flex-col h-full w-full bg-background/50 overflow-hidden animate-fade-in">
+      <div className="flex items-center justify-between px-6 py-3 border-b bg-background/80 backdrop-blur-sm shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 bg-primary/10 text-primary rounded-md">
+            <FolderKanban className="w-5 h-5" />
+          </div>
+          <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
+            <SelectTrigger className="w-[280px] h-9 font-semibold border-transparent bg-transparent shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0">
+              <SelectValue placeholder="Selecione um Pipeline" />
+            </SelectTrigger>
+            <SelectContent>
+              {allowedPipelines.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <ScrollArea className="w-full flex-1" orientation="horizontal">
         <div className="flex h-full p-6 pb-2 gap-4">
           {sortedStages.map((stage) => (
             <KanbanColumn
               key={stage.id}
               title={stage.name}
-              leads={leads.filter((l) => l.stage === stage.name)}
+              leads={activeLeads.filter((l) => l.stage === stage.name)}
               onDrop={handleDrop}
               onOpenLead={setSelectedLead}
             />

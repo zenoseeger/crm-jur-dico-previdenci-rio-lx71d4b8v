@@ -1,20 +1,21 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react'
 import { Lead, Stage, Task, TaskTemplate } from '@/types'
 import { MOCK_LEADS } from '@/lib/mockData'
-import { toast } from 'sonner'
-import { useAdminStore } from '@/stores/useAdminStore'
 import { processTagsForFlows, processTaskCompletionForFlows } from '@/lib/flowLogic'
+import { useAdminStore } from '@/stores/useAdminStore'
 
 interface LeadStore {
   leads: Lead[]
   selectedLead: Lead | null
   searchQuery: string
+  currentPipelineId: string | null
   setSearchQuery: (q: string) => void
   setSelectedLead: (lead: Lead | null) => void
+  setCurrentPipelineId: (id: string | null) => void
   moveLead: (id: string, to: Stage, r?: string, tags?: string[], tasks?: TaskTemplate[]) => void
   addLead: (lead: Lead) => void
   markAsRead: (leadId: string) => void
-  updateLeadStageNames: (oldName: string, newName: string) => void
+  updateLeadStageNames: (pipelineId: string, oldName: string, newName: string) => void
   toggleTask: (leadId: string, taskId: string) => void
   addTask: (leadId: string, task: Task) => void
   addTagToLead: (leadId: string, tag: string) => void
@@ -26,6 +27,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPipelineId, setCurrentPipelineId] = useState<string | null>(null)
   const { aiFlows } = useAdminStore()
 
   const selectedLead = leads.find((l) => l.id === selectedLeadId) || null
@@ -110,8 +112,10 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   const addLead = (lead: Lead) => setLeads((p) => [lead, ...p])
   const markAsRead = (id: string) =>
     setLeads((p) => p.map((l) => (l.id === id ? { ...l, unread: false } : l)))
-  const updateLeadStageNames = (o: string, n: string) =>
-    setLeads((p) => p.map((l) => (l.stage === o ? { ...l, stage: n } : l)))
+  const updateLeadStageNames = (pipelineId: string, o: string, n: string) =>
+    setLeads((p) =>
+      p.map((l) => (l.pipelineId === pipelineId && l.stage === o ? { ...l, stage: n } : l)),
+    )
 
   const value = {
     leads: leads.filter(
@@ -120,7 +124,9 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     ),
     selectedLead,
     searchQuery,
+    currentPipelineId,
     setSearchQuery,
+    setCurrentPipelineId,
     moveLead,
     addLead,
     markAsRead,
