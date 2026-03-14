@@ -21,6 +21,7 @@ interface LeadStore {
   updateLeadStageNames: (oldName: string, newName: string) => void
   toggleTask: (leadId: string, taskId: string) => void
   addTask: (leadId: string, task: Task) => void
+  addTagToLead: (leadId: string, tag: string) => void
 }
 
 const LeadContext = createContext<LeadStore | undefined>(undefined)
@@ -114,6 +115,16 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     )
   }
 
+  const addTagToLead = (leadId: string, tag: string) => {
+    setLeads((prev) =>
+      prev.map((lead) => {
+        if (lead.id !== leadId) return lead
+        if (lead.tags.includes(tag)) return lead
+        return { ...lead, tags: [...lead.tags, tag] }
+      }),
+    )
+  }
+
   const value = {
     leads: leads.filter(
       (l) =>
@@ -129,6 +140,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     updateLeadStageNames,
     toggleTask,
     addTask,
+    addTagToLead,
   }
 
   return <LeadContext.Provider value={value}>{children}</LeadContext.Provider>

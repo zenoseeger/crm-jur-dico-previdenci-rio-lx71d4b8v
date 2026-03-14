@@ -1,10 +1,27 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Lead } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { useAdminStore } from '@/stores/useAdminStore'
+import useLeadStore from '@/stores/useLeadStore'
 
 export function SummaryTab({ lead }: { lead: Lead }) {
+  const { tags: adminTags } = useAdminStore()
+  const { addTagToLead } = useLeadStore()
+  const [open, setOpen] = useState(false)
+
+  const unselectedTags = adminTags.filter((t) => !lead.tags.includes(t.name))
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
@@ -30,19 +47,61 @@ export function SummaryTab({ lead }: { lead: Lead }) {
 
       <div className="space-y-3">
         <h4 className="text-sm font-semibold">Tags Ativas</h4>
-        <div className="flex flex-wrap gap-2">
-          {lead.tags.map((tag) => (
-            <Badge
-              key={tag}
-              variant="secondary"
-              className="px-3 py-1 bg-accent/20 text-accent-foreground"
-            >
-              {tag}
-            </Badge>
-          ))}
-          <Badge variant="outline" className="px-3 py-1 border-dashed">
-            + Add Tag
-          </Badge>
+        <div className="flex flex-wrap gap-2 items-center">
+          {lead.tags.map((tag) => {
+            const tagDef = adminTags.find((t) => t.name === tag)
+            return (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="px-3 py-1"
+                style={{
+                  backgroundColor: tagDef ? `${tagDef.color}20` : undefined,
+                  color: tagDef ? tagDef.color : undefined,
+                  border: tagDef ? `1px solid ${tagDef.color}40` : undefined,
+                }}
+              >
+                {tag}
+              </Badge>
+            )
+          })}
+
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Badge
+                variant="outline"
+                className="px-3 py-1 border-dashed cursor-pointer hover:bg-muted transition-colors"
+              >
+                + Add Tag
+              </Badge>
+            </PopoverTrigger>
+            <PopoverContent className="w-[220px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Buscar tag..." />
+                <CommandList>
+                  <CommandEmpty>Nenhuma tag encontrada.</CommandEmpty>
+                  <CommandGroup>
+                    {unselectedTags.map((tag) => (
+                      <CommandItem
+                        key={tag.id}
+                        value={tag.name}
+                        onSelect={() => {
+                          addTagToLead(lead.id, tag.name)
+                          setOpen(false)
+                        }}
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full mr-2 shrink-0"
+                          style={{ backgroundColor: tag.color }}
+                        />
+                        {tag.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
