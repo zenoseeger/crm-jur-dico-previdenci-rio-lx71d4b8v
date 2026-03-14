@@ -11,6 +11,7 @@ import useLeadStore from '@/stores/useLeadStore'
 import { ChatTab } from './tabs/ChatTab'
 import { DocsTab } from './tabs/DocsTab'
 import { SummaryTab, QualTab, HistoryTab } from './tabs/InfoTabs'
+import { TasksTab } from './tabs/TasksTab'
 import { Badge } from '@/components/ui/badge'
 
 export function LeadDrawer() {
@@ -61,6 +62,21 @@ export function LeadDrawer() {
                 Resumo
               </TabsTrigger>
               <TabsTrigger
+                value="tasks"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-3 data-[state=active]:shadow-none bg-transparent"
+              >
+                Tarefas{' '}
+                {selectedLead.tasks &&
+                  selectedLead.tasks.filter((t) => !t.completed).length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 px-1.5 py-0 bg-primary/20 text-primary border-transparent h-4 text-[10px]"
+                    >
+                      {selectedLead.tasks.filter((t) => !t.completed).length}
+                    </Badge>
+                  )}
+              </TabsTrigger>
+              <TabsTrigger
                 value="chat"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-3 data-[state=active]:shadow-none bg-transparent"
               >
@@ -93,6 +109,12 @@ export function LeadDrawer() {
               className="m-0 p-6 h-full focus-visible:outline-none animate-fade-in"
             >
               <SummaryTab lead={selectedLead} />
+            </TabsContent>
+            <TabsContent
+              value="tasks"
+              className="m-0 p-6 h-full focus-visible:outline-none animate-fade-in"
+            >
+              <TasksTab lead={selectedLead} />
             </TabsContent>
             <TabsContent
               value="chat"

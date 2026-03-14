@@ -1,14 +1,28 @@
-export type Stage =
-  | 'NOVO LEAD'
-  | 'EM QUALIFICAÇÃO'
-  | 'AGUARDANDO DOCUMENTOS'
-  | 'ANÁLISE JURÍDICA'
-  | 'REUNIÃO DE FECHAMENTO'
-  | 'CONTRATO ENVIADO'
-  | 'CLIENTE ATIVO'
-  | 'PERDIDO'
+export type Stage = string
 
 export type HeatScore = 'Hot' | 'Warm' | 'Cold'
+
+export interface TaskTemplate {
+  id: string
+  title: string
+  description: string
+}
+
+export interface Task {
+  id: string
+  title: string
+  description: string
+  completed: boolean
+  createdAt: string
+}
+
+export interface PipelineStage {
+  id: string
+  name: string
+  order: number
+  autoTags: string[]
+  autoTasks: TaskTemplate[]
+}
 
 export interface Lead {
   id: string
@@ -25,6 +39,7 @@ export interface Lead {
   aiScore: number
   lastMessageAt?: string
   lostReason?: string
+  tasks?: Task[]
 }
 
 export interface ChatMessage {

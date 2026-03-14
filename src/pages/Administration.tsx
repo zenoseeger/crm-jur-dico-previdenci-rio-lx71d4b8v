@@ -1,10 +1,11 @@
 import React from 'react'
-import { ShieldCheck, Users, Tags, MessageSquare, Bot } from 'lucide-react'
+import { ShieldCheck, Users, Tags, MessageSquare, Bot, GitMerge } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { UserManagement } from '@/components/admin/UserManagement'
 import { TagManagement } from '@/components/admin/TagManagement'
 import { WhatsAppConfig } from '@/components/admin/WhatsAppConfig'
 import { AIStudio } from '@/components/admin/AIStudio'
+import { PipelineManagement } from '@/components/admin/PipelineManagement'
 
 export default function Administration() {
   return (
@@ -18,13 +19,19 @@ export default function Administration() {
             Administração
           </h1>
           <p className="text-muted-foreground">
-            Gerencie equipe, integrações, tags e configurações da IA.
+            Gerencie equipe, integrações, tags, pipeline e automações.
           </p>
         </div>
       </div>
 
-      <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
+      <Tabs defaultValue="pipeline" className="space-y-6">
+        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1 rounded-lg flex-wrap h-auto">
+          <TabsTrigger
+            value="pipeline"
+            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-amber-500 gap-2"
+          >
+            <GitMerge className="w-4 h-4" /> Pipeline & Automações
+          </TabsTrigger>
           <TabsTrigger
             value="users"
             className="data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-amber-500 gap-2"
@@ -50,6 +57,10 @@ export default function Administration() {
             <Bot className="w-4 h-4" /> AI Studio
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="pipeline" className="m-0">
+          <PipelineManagement />
+        </TabsContent>
 
         <TabsContent value="users" className="m-0">
           <UserManagement />

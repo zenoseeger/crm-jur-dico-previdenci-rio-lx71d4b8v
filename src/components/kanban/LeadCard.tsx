@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import useLeadStore from '@/stores/useLeadStore'
+import { useAdminStore } from '@/stores/useAdminStore'
 
 interface LeadCardProps {
   lead: Lead
@@ -19,6 +20,7 @@ interface LeadCardProps {
 
 export function LeadCard({ lead, onOpen }: LeadCardProps) {
   const { moveLead } = useLeadStore()
+  const { pipelineStages } = useAdminStore()
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('leadId', lead.id)
@@ -35,6 +37,12 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
       default:
         return 'bg-muted text-muted-foreground'
     }
+  }
+
+  const handleMove = (e: React.MouseEvent, stageName: string) => {
+    e.stopPropagation()
+    const stage = pipelineStages.find((s) => s.name === stageName)
+    moveLead(lead.id, stageName, undefined, stage?.autoTags, stage?.autoTasks)
   }
 
   return (
@@ -70,19 +78,16 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {pipelineStages
+                .filter((s) => s.name !== lead.stage && s.name !== 'PERDIDO')
+                .slice(0, 3)
+                .map((stage) => (
+                  <DropdownMenuItem key={stage.id} onClick={(e) => handleMove(e, stage.name)}>
+                    Mover para {stage.name}
+                  </DropdownMenuItem>
+                ))}
               <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation()
-                  moveLead(lead.id, 'EM QUALIFICAÇÃO')
-                }}
-              >
-                Mover para Qualificação
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation()
-                  moveLead(lead.id, 'PERDIDO')
-                }}
+                onClick={(e) => handleMove(e, 'PERDIDO')}
                 className="text-destructive"
               >
                 Marcar como Perdido

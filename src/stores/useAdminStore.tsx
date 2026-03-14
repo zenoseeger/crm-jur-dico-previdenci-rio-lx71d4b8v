@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react'
-import { User, TagDef, AIConfig, WhatsAppConfig, UserRole, TagCategory } from '@/types'
+import {
+  User,
+  TagDef,
+  AIConfig,
+  WhatsAppConfig,
+  UserRole,
+  TagCategory,
+  PipelineStage,
+} from '@/types'
 import { toast } from 'sonner'
 
 interface AdminStore {
@@ -7,6 +15,7 @@ interface AdminStore {
   tags: TagDef[]
   aiConfig: AIConfig
   whatsAppConfig: WhatsAppConfig
+  pipelineStages: PipelineStage[]
   addUser: (user: Omit<User, 'id'>) => void
   updateUser: (id: string, user: Partial<User>) => void
   deleteUser: (id: string) => void
@@ -15,6 +24,10 @@ interface AdminStore {
   deleteTag: (id: string) => void
   updateAIConfig: (config: Partial<AIConfig>) => void
   updateWhatsAppConfig: (config: Partial<WhatsAppConfig>) => void
+  addPipelineStage: (stage: Omit<PipelineStage, 'id' | 'order'>) => void
+  updatePipelineStage: (id: string, stage: Partial<PipelineStage>) => void
+  deletePipelineStage: (id: string) => void
+  reorderPipelineStages: (newOrderIds: string[]) => void
 }
 
 const AdminContext = createContext<AdminStore | undefined>(undefined)
@@ -33,9 +46,33 @@ const initialTags: TagDef[] = [
   { id: 't4', name: 'Urgente', color: '#f59e0b', category: 'Follow-up' },
 ]
 
+const initialPipelineStages: PipelineStage[] = [
+  { id: 's1', name: 'NOVO LEAD', order: 0, autoTags: [], autoTasks: [] },
+  { id: 's2', name: 'EM QUALIFICAÇÃO', order: 1, autoTags: [], autoTasks: [] },
+  { id: 's3', name: 'AGUARDANDO DOCUMENTOS', order: 2, autoTags: [], autoTasks: [] },
+  { id: 's4', name: 'ANÁLISE JURÍDICA', order: 3, autoTags: [], autoTasks: [] },
+  { id: 's5', name: 'REUNIÃO DE FECHAMENTO', order: 4, autoTags: [], autoTasks: [] },
+  { id: 's6', name: 'CONTRATO ENVIADO', order: 5, autoTags: [], autoTasks: [] },
+  {
+    id: 's7',
+    name: 'CLIENTE ATIVO',
+    order: 6,
+    autoTags: ['Urgente'],
+    autoTasks: [
+      {
+        id: 'tpl_1',
+        title: 'Enviar mensagem de boas-vindas',
+        description: 'Apresentar a equipe e os próximos passos.',
+      },
+    ],
+  },
+  { id: 's8', name: 'PERDIDO', order: 7, autoTags: [], autoTasks: [] },
+]
+
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [tags, setTags] = useState<TagDef[]>(initialTags)
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(initialPipelineStages)
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     prompt:
       'Você é a assistente virtual do escritório de advocacia. Seja educada e foque em qualificar leads previdenciários.',
@@ -55,6 +92,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     tags,
     aiConfig,
     whatsAppConfig,
+    pipelineStages,
     addUser: (user: Omit<User, 'id'>) => {
       setUsers((prev) => [...prev, { ...user, id: `u${Date.now()}` }])
       toast.success('Usuário adicionado com sucesso!')
@@ -86,6 +124,26 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     updateWhatsAppConfig: (config: Partial<WhatsAppConfig>) => {
       setWhatsAppConfig((prev) => ({ ...prev, ...config }))
       toast.success('Configurações do WhatsApp salvas!')
+    },
+    addPipelineStage: (stage: Omit<PipelineStage, 'id' | 'order'>) => {
+      setPipelineStages((prev) => [...prev, { ...stage, id: `s${Date.now()}`, order: prev.length }])
+      toast.success('Etapa criada com sucesso!')
+    },
+    updatePipelineStage: (id: string, stage: Partial<PipelineStage>) => {
+      setPipelineStages((prev) => prev.map((s) => (s.id === id ? { ...s, ...stage } : s)))
+      toast.success('Etapa atualizada com sucesso!')
+    },
+    deletePipelineStage: (id: string) => {
+      setPipelineStages((prev) =>
+        prev.filter((s) => s.id !== id).map((s, i) => ({ ...s, order: i })),
+      )
+      toast.success('Etapa removida.')
+    },
+    reorderPipelineStages: (newOrderIds: string[]) => {
+      setPipelineStages((prev) => {
+        const map = new Map(prev.map((s) => [s.id, s]))
+        return newOrderIds.map((id, index) => ({ ...map.get(id)!, order: index }))
+      })
     },
   }
 

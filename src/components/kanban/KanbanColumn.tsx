@@ -1,14 +1,14 @@
 import React from 'react'
-import { Stage, Lead } from '@/types'
+import { Lead } from '@/types'
 import { LeadCard } from './LeadCard'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 
 interface KanbanColumnProps {
-  title: Stage
+  title: string
   leads: Lead[]
-  onDrop: (leadId: string, stage: Stage) => void
+  onDrop: (leadId: string, stage: string) => void
   onOpenLead: (lead: Lead) => void
 }
 
