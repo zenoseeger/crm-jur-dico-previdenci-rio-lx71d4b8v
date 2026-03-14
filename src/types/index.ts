@@ -106,11 +106,19 @@ export interface WhatsAppConfig {
   webhookUrl: string
 }
 
+export interface AIFlowStepMedia {
+  id: string
+  type: 'image' | 'video' | 'audio'
+  url: string
+  name: string
+}
+
 export interface AIFlowStep {
   id: string
   order: number
   prompt: string
   dueInDays: number
+  media?: AIFlowStepMedia[]
 }
 
 export interface AIFlow {

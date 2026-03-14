@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useAdminStore } from '@/stores/useAdminStore'
-import { AIFlow } from '@/types'
+import { AIFlow, AIFlowStepMedia } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Edit2, Trash2, Plus, X } from 'lucide-react'
+import { Edit2, Trash2, Plus, X, Paperclip, Video, Headphones } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export function AIFlowManagement() {
@@ -41,7 +41,7 @@ export function AIFlowManagement() {
   const [formData, setFormData] = useState<Omit<AIFlow, 'id'>>({
     name: '',
     triggerTagName: '',
-    steps: [{ id: `s${Date.now()}`, order: 1, prompt: '', dueInDays: 1 }],
+    steps: [{ id: `s${Date.now()}`, order: 1, prompt: '', dueInDays: 1, media: [] }],
   })
 
   const handleOpenDialog = (flow?: AIFlow) => {
@@ -53,7 +53,7 @@ export function AIFlowManagement() {
       setFormData({
         name: '',
         triggerTagName: '',
-        steps: [{ id: `s${Date.now()}`, order: 1, prompt: '', dueInDays: 1 }],
+        steps: [{ id: `s${Date.now()}`, order: 1, prompt: '', dueInDays: 1, media: [] }],
       })
     }
     setIsOpen(true)
@@ -71,7 +71,7 @@ export function AIFlowManagement() {
       ...prev,
       steps: [
         ...prev.steps,
-        { id: `s${Date.now()}`, order: prev.steps.length + 1, prompt: '', dueInDays: 1 },
+        { id: `s${Date.now()}`, order: prev.steps.length + 1, prompt: '', dueInDays: 1, media: [] },
       ],
     }))
   }
@@ -91,13 +91,52 @@ export function AIFlowManagement() {
     }))
   }
 
+  const handleFileUpload = (stepIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const url = e.target?.result as string
+      let type: 'image' | 'video' | 'audio' = 'image'
+      if (file.type.startsWith('video/')) type = 'video'
+      if (file.type.startsWith('audio/')) type = 'audio'
+
+      const newMedia: AIFlowStepMedia = {
+        id: `m_${Date.now()}`,
+        type,
+        url,
+        name: file.name,
+      }
+
+      setFormData((prev) => {
+        const newSteps = [...prev.steps]
+        const currentMedia = newSteps[stepIndex].media || []
+        newSteps[stepIndex] = { ...newSteps[stepIndex], media: [...currentMedia, newMedia] }
+        return { ...prev, steps: newSteps }
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeMedia = (stepIndex: number, mediaId: string) => {
+    setFormData((prev) => {
+      const newSteps = [...prev.steps]
+      newSteps[stepIndex] = {
+        ...newSteps[stepIndex],
+        media: newSteps[stepIndex].media?.filter((m) => m.id !== mediaId) || [],
+      }
+      return { ...prev, steps: newSteps }
+    })
+  }
+
   return (
     <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Fluxos de Follow-up com IA</CardTitle>
           <CardDescription>
-            Crie sequências de tarefas automatizadas disparadas por tags.
+            Crie sequências automatizadas disparadas por tags, com suporte a mídias.
           </CardDescription>
         </div>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -109,11 +148,11 @@ export function AIFlowManagement() {
               <Plus className="w-4 h-4 mr-2" /> Novo Fluxo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingFlow ? 'Editar Fluxo IA' : 'Criar Fluxo IA'}</DialogTitle>
               <DialogDescription>
-                Mapeie uma tag para iniciar uma sequência de tarefas de follow-up geradas por IA.
+                Mapeie uma tag para iniciar uma sequência de tarefas e mídias de follow-up.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
@@ -151,11 +190,11 @@ export function AIFlowManagement() {
                 {formData.steps.map((step, idx) => (
                   <div
                     key={step.id}
-                    className="border p-4 rounded-lg space-y-3 bg-muted/20 relative"
+                    className="border p-4 rounded-lg space-y-4 bg-muted/20 relative"
                   >
                     <div className="flex justify-between items-center">
                       <Badge variant="outline" className="bg-background">
-                        {step.order}
+                        Passo {step.order}
                       </Badge>
                       <Button
                         variant="ghost"
@@ -186,6 +225,56 @@ export function AIFlowManagement() {
                         className="min-h-[80px] text-sm resize-none"
                         placeholder="Ex: Gere uma mensagem curta lembrando o cliente sobre os documentos."
                       />
+                    </div>
+                    <div className="space-y-2 pt-2 border-t border-border/50">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold">Anexos Multimídia</Label>
+                        <label className="cursor-pointer inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 px-2 py-1 rounded">
+                          <Paperclip className="w-3 h-3" /> Adicionar Arquivo
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/jpeg, image/png, image/gif, video/mp4, audio/mpeg, audio/wav"
+                            onChange={(e) => handleFileUpload(idx, e)}
+                          />
+                        </label>
+                      </div>
+                      {step.media && step.media.length > 0 && (
+                        <div className="flex flex-wrap gap-3 pt-2">
+                          {step.media.map((m) => (
+                            <div
+                              key={m.id}
+                              className="relative group border border-border shadow-sm rounded-md bg-background w-20 h-20 flex flex-col items-center justify-center overflow-hidden"
+                            >
+                              <button
+                                onClick={() => removeMedia(idx, m.id)}
+                                className="absolute top-1 right-1 bg-destructive/80 hover:bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                title="Remover mídia"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              {m.type === 'image' && (
+                                <img
+                                  src={m.url}
+                                  alt={m.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              )}
+                              {m.type === 'video' && (
+                                <Video className="w-6 h-6 text-muted-foreground mb-1" />
+                              )}
+                              {m.type === 'audio' && (
+                                <Headphones className="w-6 h-6 text-muted-foreground mb-1" />
+                              )}
+                              {m.type !== 'image' && (
+                                <span className="text-[9px] text-muted-foreground truncate w-full px-1 text-center">
+                                  {m.name}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -221,6 +310,7 @@ export function AIFlowManagement() {
               <TableHead>Nome</TableHead>
               <TableHead>Gatilho</TableHead>
               <TableHead>Passos</TableHead>
+              <TableHead>Mídias</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -232,6 +322,11 @@ export function AIFlowManagement() {
                   <Badge variant="secondary">{flow.triggerTagName}</Badge>
                 </TableCell>
                 <TableCell>{flow.steps.length} etapas</TableCell>
+                <TableCell>
+                  <span className="text-muted-foreground text-sm">
+                    {flow.steps.reduce((acc, step) => acc + (step.media?.length || 0), 0)} arquivos
+                  </span>
+                </TableCell>
                 <TableCell className="text-right space-x-2">
                   <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(flow)}>
                     <Edit2 className="w-4 h-4 text-muted-foreground" />

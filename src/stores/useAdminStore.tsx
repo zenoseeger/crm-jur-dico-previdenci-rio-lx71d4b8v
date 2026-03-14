@@ -97,6 +97,14 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
           order: 1,
           prompt: 'Crie uma mensagem urgente para agendar a reunião de fechamento hoje.',
           dueInDays: 0,
+          media: [
+            {
+              id: 'm1',
+              type: 'image',
+              url: 'https://img.usecurling.com/p/200/200?q=document',
+              name: 'documento_exemplo.jpg',
+            },
+          ],
         },
       ],
     },
