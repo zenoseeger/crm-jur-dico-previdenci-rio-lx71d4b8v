@@ -7,7 +7,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import useLeadStore from '@/stores/useLeadStore'
-import { Plus, CheckCircle2, CalendarClock, CalendarIcon, Clock } from 'lucide-react'
+import {
+  Plus,
+  CheckCircle2,
+  CalendarClock,
+  CalendarIcon,
+  Clock,
+  Sparkles,
+  Loader2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -17,6 +25,7 @@ export function TasksTab({ lead }: { lead: Lead }) {
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskDesc, setNewTaskDesc] = useState('')
   const [newTaskDate, setNewTaskDate] = useState<Date | undefined>(undefined)
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,13 +45,42 @@ export function TasksTab({ lead }: { lead: Lead }) {
     setNewTaskDate(undefined)
   }
 
+  const generateAIFollowUp = () => {
+    setIsGeneratingAI(true)
+    setTimeout(() => {
+      setNewTaskTitle(`Follow-up de Contato: ${lead.stage}`)
+      setNewTaskDesc(
+        `Olá ${lead.name}, tudo bem? Aqui é do escritório de advocacia previdenciária. Estou entrando em contato pois vi que o seu processo referente a ${lead.benefitType} encontra-se na fase de ${lead.stage}. Podemos agendar um breve bate-papo para alinhar os próximos passos e eventuais documentações?`,
+      )
+      setIsGeneratingAI(false)
+    }, 1200)
+  }
+
   const tasks = lead.tasks || []
   const now = new Date()
 
   return (
     <div className="space-y-6">
       <form onSubmit={handleAdd} className="space-y-3 p-4 border rounded-lg bg-card/50 shadow-sm">
-        <h4 className="text-sm font-medium">Nova Tarefa</h4>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+          <h4 className="text-sm font-medium">Nova Tarefa</h4>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={generateAIFollowUp}
+            disabled={isGeneratingAI}
+            className="h-7 text-xs bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary transition-all"
+          >
+            {isGeneratingAI ? (
+              <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3 h-3 mr-1.5" />
+            )}
+            Gerar Follow-up com IA
+          </Button>
+        </div>
+
         <div className="space-y-2">
           <Input
             placeholder="Título da tarefa (obrigatório)"

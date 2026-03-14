@@ -21,7 +21,7 @@ interface LeadCardProps {
 
 export function LeadCard({ lead, onOpen }: LeadCardProps) {
   const { moveLead } = useLeadStore()
-  const { pipelineStages } = useAdminStore()
+  const { pipelineStages, tags: adminTags } = useAdminStore()
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('leadId', lead.id)
@@ -29,11 +29,11 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
 
   const getHeatColor = (heat: string) => {
     switch (heat) {
-      case 'Hot':
+      case 'Quente':
         return 'bg-destructive text-destructive-foreground'
-      case 'Warm':
+      case 'Morno':
         return 'bg-warning text-warning-foreground'
-      case 'Cold':
+      case 'Frio':
         return 'bg-muted-foreground text-secondary-foreground'
       default:
         return 'bg-muted text-muted-foreground'
@@ -109,11 +109,27 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
           >
             {lead.heat}
           </Badge>
-          {lead.tags.slice(0, 2).map((tag) => (
-            <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 bg-background/50">
-              {tag}
-            </Badge>
-          ))}
+          {lead.tags.slice(0, 2).map((tag) => {
+            const tagDef = adminTags.find((t) => t.name === tag)
+            return (
+              <Badge
+                key={tag}
+                variant="outline"
+                className="text-[10px] px-1.5 py-0"
+                style={
+                  tagDef
+                    ? {
+                        backgroundColor: `${tagDef.color}15`,
+                        color: tagDef.color,
+                        borderColor: `${tagDef.color}40`,
+                      }
+                    : { backgroundColor: 'var(--background)' }
+                }
+              >
+                {tag}
+              </Badge>
+            )
+          })}
           {lead.tags.length > 2 && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-background/50">
               +{lead.tags.length - 2}

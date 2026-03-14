@@ -1,6 +1,6 @@
 export type Stage = string
 
-export type HeatScore = 'Hot' | 'Warm' | 'Cold'
+export type HeatScore = 'Quente' | 'Morno' | 'Frio'
 
 export interface TaskTemplate {
   id: string
