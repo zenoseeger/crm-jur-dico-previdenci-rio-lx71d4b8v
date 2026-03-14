@@ -1,8 +1,8 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Users, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import React from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { Users, CheckCircle, Clock, TrendingUp } from 'lucide-react'
 
 const funnelData = [
   { stage: 'Novo Lead', count: 120, fill: 'var(--color-stage1)' },
@@ -12,18 +12,18 @@ const funnelData = [
   { stage: 'Reunião', count: 30, fill: 'var(--color-stage5)' },
   { stage: 'Contrato', count: 25, fill: 'var(--color-stage6)' },
   { stage: 'Cliente', count: 18, fill: 'var(--color-stage7)' },
-];
+]
 
 const chartConfig = {
-  count: { label: "Leads" },
-  stage1: { color: "hsl(var(--primary))" },
-  stage2: { color: "hsl(var(--primary) / 0.9)" },
-  stage3: { color: "hsl(var(--primary) / 0.8)" },
-  stage4: { color: "hsl(var(--primary) / 0.7)" },
-  stage5: { color: "hsl(var(--accent))" },
-  stage6: { color: "hsl(var(--success))" },
-  stage7: { color: "hsl(var(--success))" },
-};
+  count: { label: 'Leads' },
+  stage1: { color: 'hsl(var(--primary))' },
+  stage2: { color: 'hsl(var(--primary) / 0.9)' },
+  stage3: { color: 'hsl(var(--primary) / 0.8)' },
+  stage4: { color: 'hsl(var(--primary) / 0.7)' },
+  stage5: { color: 'hsl(var(--accent))' },
+  stage6: { color: 'hsl(var(--success))' },
+  stage7: { color: 'hsl(var(--success))' },
+}
 
 export default function Dashboard() {
   return (
@@ -61,12 +61,12 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">14 min</div>
-            <p className="text-xs text-muted-foreground">-3 min de melhoria (meta: < 15m)</p>
+            <p className="text-xs text-muted-foreground">-3 min de melhoria (meta: &lt; 15m)</p>
           </CardContent>
         </Card>
         <Card className="shadow-sm border-l-4 border-l-warning">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Leads Sem Resposta > 48h</CardTitle>
+            <CardTitle className="text-sm font-medium">Leads Sem Resposta &gt; 48h</CardTitle>
             <TrendingUp className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
@@ -85,10 +85,25 @@ export default function Dashboard() {
           <CardContent className="h-[300px]">
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={funnelData} layout="vertical" margin={{ top: 0, right: 0, left: 40, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                <BarChart
+                  data={funnelData}
+                  layout="vertical"
+                  margin={{ top: 0, right: 0, left: 40, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    horizontal={false}
+                    stroke="hsl(var(--border))"
+                  />
                   <XAxis type="number" hide />
-                  <YAxis dataKey="stage" type="category" axisLine={false} tickLine={false} fontSize={12} width={100} />
+                  <YAxis
+                    dataKey="stage"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    fontSize={12}
+                    width={100}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20} />
                 </BarChart>
@@ -104,11 +119,16 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0"
+                >
                   <div>
                     <p className="text-sm font-medium">José Alberto Silva</p>
-                    <p className="text-xs text-muted-foreground">Aguardando Documentos • SDR João</p>
+                    <p className="text-xs text-muted-foreground">
+                      Aguardando Documentos • SDR João
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-destructive">3 dias</p>
@@ -121,5 +141,5 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
-  );
+  )
 }
