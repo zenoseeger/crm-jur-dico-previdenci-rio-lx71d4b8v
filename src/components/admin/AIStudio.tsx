@@ -21,12 +21,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Save, Send, Sparkles, RefreshCcw } from 'lucide-react'
+import { Save, Send, Sparkles, RefreshCcw, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 export function AIStudio() {
   const { aiConfig, updateAIConfig } = useAdminStore()
   const [formData, setFormData] = useState(aiConfig)
+  const [showApiKey, setShowApiKey] = useState(false)
   const [chat, setChat] = useState<{ role: 'ai' | 'user'; text: string }[]>([
     {
       role: 'ai',
@@ -37,7 +39,12 @@ export function AIStudio() {
   const [isTyping, setIsTyping] = useState(false)
 
   const handleSave = () => {
+    if (!formData.apiKey.trim()) {
+      toast.error('A API Key da OpenAI é obrigatória.')
+      return
+    }
     updateAIConfig(formData)
+    toast.success('Configurações de IA salvas com sucesso!')
   }
 
   const handleSend = () => {
@@ -49,11 +56,12 @@ export function AIStudio() {
 
     // Mock AI response
     setTimeout(() => {
+      const keySuffix = formData.apiKey ? `***${formData.apiKey.slice(-4)}` : 'Nenhuma'
       setChat((prev) => [
         ...prev,
         {
           role: 'ai',
-          text: `Com base no prompt (Modelo: ${formData.model}, Temp: ${formData.temperature}), minha resposta simulada para "${userMsg}" seria focar na coleta de documentos do CNIS.`,
+          text: `[Chave: ${keySuffix}] Com base no prompt (Modelo: ${formData.model}, Temp: ${formData.temperature}), minha resposta simulada para "${userMsg}" seria focar na coleta de documentos do CNIS.`,
         },
       ])
       setIsTyping(false)
@@ -64,13 +72,81 @@ export function AIStudio() {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <Card className="lg:col-span-7 border-slate-200 shadow-sm flex flex-col">
         <CardHeader>
-          <CardTitle>Comportamento da IA</CardTitle>
+          <CardTitle>Configurações de IA</CardTitle>
           <CardDescription>
-            Defina as regras, personalidade e parâmetros do modelo de linguagem.
+            Configure suas credenciais da OpenAI e ajuste o comportamento do assistente.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 flex-1">
-          <div className="space-y-2">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>
+                OpenAI API Key <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showApiKey ? 'text' : 'password'}
+                  placeholder="sk-..."
+                  value={formData.apiKey}
+                  onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                >
+                  {showApiKey ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Sua chave é armazenada no estado da aplicação para uso nas gerações de follow-up.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label>Modelo de IA</Label>
+                <Select
+                  value={formData.model}
+                  onValueChange={(val) => setFormData({ ...formData, model: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gpt-4o">gpt-4o</SelectItem>
+                    <SelectItem value="gpt-4-turbo">gpt-4-turbo</SelectItem>
+                    <SelectItem value="gpt-4">gpt-4</SelectItem>
+                    <SelectItem value="gpt-3.5-turbo">gpt-3.5-turbo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <Label>Temperatura: {formData.temperature}</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {formData.temperature > 0.6 ? 'Criativo' : 'Preciso'}
+                  </span>
+                </div>
+                <Slider
+                  max={1}
+                  min={0}
+                  step={0.1}
+                  value={[formData.temperature]}
+                  onValueChange={([val]) => setFormData({ ...formData, temperature: val })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-4 border-t">
             <div className="flex justify-between items-center">
               <Label>System Prompt</Label>
               <Button
@@ -83,49 +159,18 @@ export function AIStudio() {
               </Button>
             </div>
             <Textarea
-              className="min-h-[250px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900"
+              className="min-h-[150px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900"
               value={formData.prompt}
               onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
             />
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t">
-            <div className="space-y-2">
-              <Label>Modelo de IA</Label>
-              <Select
-                value={formData.model}
-                onValueChange={(val) => setFormData({ ...formData, model: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
-                  <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                  <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Rápido)</SelectItem>
-                  <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <Label>Temperatura: {formData.temperature}</Label>
-                <span className="text-xs text-muted-foreground">
-                  {formData.temperature > 0.6 ? 'Criativo' : 'Preciso'}
-                </span>
-              </div>
-              <Slider
-                max={1}
-                min={0}
-                step={0.1}
-                value={[formData.temperature]}
-                onValueChange={([val]) => setFormData({ ...formData, temperature: val })}
-              />
-            </div>
-          </div>
         </CardContent>
         <CardFooter className="bg-slate-50 dark:bg-slate-900/50 justify-end py-4">
-          <Button onClick={handleSave} className="bg-slate-900 gap-2">
+          <Button
+            onClick={handleSave}
+            className="bg-slate-900 gap-2"
+            disabled={!formData.apiKey.trim()}
+          >
             <Save className="w-4 h-4" /> Salvar Configurações
           </Button>
         </CardFooter>
@@ -137,7 +182,7 @@ export function AIStudio() {
             <Sparkles className="w-5 h-5 text-amber-500" /> Sandbox de Teste
           </CardTitle>
           <CardDescription className="text-slate-300">
-            Teste as alterações de prompt em tempo real.
+            Teste as configurações e a chave fornecida.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0 flex-1 flex flex-col relative overflow-hidden">

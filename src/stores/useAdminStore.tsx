@@ -49,6 +49,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [tags, setTags] = useState<TagDef[]>(initialTags)
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(initialPipelineStages)
   const [aiConfig, setAiConfig] = useState<AIConfig>({
+    apiKey: '',
     prompt: '',
     model: 'gpt-4o',
     temperature: 0.7,
