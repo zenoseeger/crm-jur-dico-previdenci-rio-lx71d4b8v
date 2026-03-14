@@ -1,5 +1,5 @@
 import React from 'react'
-import { Clock, MessageCircle, MoreVertical, CalendarClock, Workflow } from 'lucide-react'
+import { Clock, MessageCircle, MoreVertical, CalendarClock } from 'lucide-react'
 import { Lead } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -69,7 +69,6 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
 
   const activeFlow = lead.activeFlows && lead.activeFlows.length > 0 ? lead.activeFlows[0] : null
   const flowDetails = activeFlow ? aiFlows.find((f) => f.id === activeFlow.flowId) : null
-  const totalSteps = flowDetails?.steps?.length || 0
 
   return (
     <Card
@@ -204,15 +203,16 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
               {activeFlow && (
                 <Tooltip>
                   <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1 ml-1 bg-primary/10 text-primary px-1 rounded text-[9px] font-bold border border-primary/20 cursor-help transition-all hover:bg-primary/20">
-                      <Workflow className="w-2.5 h-2.5" />
-                      <span>
-                        {activeFlow.currentStepOrder}/{totalSteps > 0 ? totalSteps : '?'}
-                      </span>
-                    </div>
+                    <Badge
+                      variant="secondary"
+                      className="ml-0.5 h-4 min-w-[1rem] px-1 py-0 text-[9px] font-bold leading-none flex items-center justify-center cursor-help transition-all hover:bg-secondary/80"
+                    >
+                      {activeFlow.currentStepOrder}
+                    </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs z-50">
-                    Fluxo IA Ativo: {flowDetails?.name || 'Desconhecido'}
+                    Passo {activeFlow.currentStepOrder} - Fluxo IA:{' '}
+                    {flowDetails?.name || 'Desconhecido'}
                   </TooltipContent>
                 </Tooltip>
               )}

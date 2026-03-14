@@ -155,7 +155,7 @@ export function AIFlowManagement() {
                   >
                     <div className="flex justify-between items-center">
                       <Badge variant="outline" className="bg-background">
-                        Passo {step.order}
+                        {step.order}
                       </Badge>
                       <Button
                         variant="ghost"
