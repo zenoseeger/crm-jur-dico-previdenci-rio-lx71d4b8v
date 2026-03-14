@@ -101,6 +101,20 @@ export const MOCK_LEADS: Lead[] = [
     city: 'Fortaleza, CE',
     assignee: 'Closer Paula',
     aiScore: 95,
+    activeFlows: [{ flowId: 'f1', currentStepOrder: 1 }],
+    tasks: [
+      {
+        id: 't_f1_1',
+        title: 'Follow-up: Contato Urgente (Etapa 1)',
+        description:
+          '[Gerado por IA]: Crie uma mensagem urgente para agendar reunião de fechamento hoje.',
+        completed: false,
+        createdAt: new Date().toISOString(),
+        dueDate: new Date().toISOString(),
+        flowId: 'f1',
+        stepOrder: 1,
+      },
+    ],
   },
 ]
 

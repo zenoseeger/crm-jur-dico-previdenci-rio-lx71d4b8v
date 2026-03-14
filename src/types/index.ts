@@ -16,6 +16,8 @@ export interface Task {
   completed: boolean
   createdAt: string
   dueDate?: string
+  flowId?: string
+  stepOrder?: number
 }
 
 export interface PipelineStage {
@@ -42,6 +44,7 @@ export interface Lead {
   lastMessageAt?: string
   lostReason?: string
   tasks?: Task[]
+  activeFlows?: { flowId: string; currentStepOrder: number }[]
 }
 
 export interface ChatMessage {
@@ -93,4 +96,18 @@ export interface WhatsAppConfig {
   accountId: string
   connected: boolean
   webhookUrl: string
+}
+
+export interface AIFlowStep {
+  id: string
+  order: number
+  prompt: string
+  dueInDays: number
+}
+
+export interface AIFlow {
+  id: string
+  name: string
+  triggerTagName: string
+  steps: AIFlowStep[]
 }

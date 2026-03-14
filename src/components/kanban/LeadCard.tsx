@@ -1,5 +1,5 @@
 import React from 'react'
-import { Clock, MessageCircle, MoreVertical, CalendarClock } from 'lucide-react'
+import { Clock, MessageCircle, MoreVertical, CalendarClock, Workflow } from 'lucide-react'
 import { Lead } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -141,7 +141,7 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
           <span className="truncate max-w-[100px] font-medium text-foreground/70">
             {lead.assignee}
           </span>
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-2 ml-auto">
             {hasPending && (
               <Tooltip>
                 <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -174,9 +174,28 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
                 </TooltipContent>
               </Tooltip>
             )}
-            <div className="flex items-center gap-1" title="Tempo na etapa">
-              <Clock className="w-3 h-3 opacity-50" />
-              <span>{lead.timeInStage}</span>
+
+            <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1" title="Tempo na etapa">
+                <Clock className="w-3 h-3 opacity-50" />
+                <span>{lead.timeInStage}</span>
+              </div>
+
+              {lead.activeFlows && lead.activeFlows.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1 ml-1 bg-primary/10 text-primary px-1 rounded text-[9px] font-bold border border-primary/20 cursor-help transition-all hover:bg-primary/20">
+                      <Workflow className="w-2.5 h-2.5" />
+                      <span>
+                        Seq {Math.max(...lead.activeFlows.map((f) => f.currentStepOrder))}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs z-50">
+                    Fluxo de Follow-up IA Ativo
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
         </div>

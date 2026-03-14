@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, ReactNode } from 'react'
 import { Lead, Stage, Task, TaskTemplate } from '@/types'
 import { MOCK_LEADS } from '@/lib/mockData'
 import { toast } from 'sonner'
+import { useAdminStore } from '@/stores/useAdminStore'
+import { processTagsForFlows, processTaskCompletionForFlows } from '@/lib/flowLogic'
 
 interface LeadStore {
   leads: Lead[]
@@ -9,13 +11,7 @@ interface LeadStore {
   searchQuery: string
   setSearchQuery: (q: string) => void
   setSelectedLead: (lead: Lead | null) => void
-  moveLead: (
-    leadId: string,
-    toStage: Stage,
-    reason?: string,
-    autoTags?: string[],
-    autoTasks?: TaskTemplate[],
-  ) => void
+  moveLead: (id: string, to: Stage, r?: string, tags?: string[], tasks?: TaskTemplate[]) => void
   addLead: (lead: Lead) => void
   markAsRead: (leadId: string) => void
   updateLeadStageNames: (oldName: string, newName: string) => void
@@ -30,87 +26,63 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const { aiFlows } = useAdminStore()
 
   const selectedLead = leads.find((l) => l.id === selectedLeadId) || null
 
   const moveLead = (
     leadId: string,
-    toStage: Stage,
-    reason?: string,
+    to: Stage,
+    r?: string,
     autoTags: string[] = [],
     autoTasks: TaskTemplate[] = [],
   ) => {
     setLeads((prev) =>
       prev.map((lead) => {
         if (lead.id !== leadId) return lead
-
-        if (toStage === 'CLIENTE ATIVO' && lead.stage !== 'CLIENTE ATIVO') {
-          toast.success(`🎉 Parabéns! Contrato de ${lead.name} assinado!`, {
-            description: 'Mais um cliente ativo no escritório.',
-          })
-        }
-
         const newTags = Array.from(new Set([...lead.tags, ...autoTags]))
-        const addedTasks = autoTasks.map((t) => {
-          const dueDate = new Date()
-          if (t.dueInDays !== undefined) {
-            dueDate.setDate(dueDate.getDate() + t.dueInDays)
-          }
-          return {
-            id: `task_${Date.now()}_${Math.random()}`,
-            title: t.title,
-            description: t.description,
-            completed: false,
-            createdAt: new Date().toISOString(),
-            dueDate: t.dueInDays !== undefined ? dueDate.toISOString() : undefined,
-          }
-        })
-
-        const newTasks = [...(lead.tasks || []), ...addedTasks]
-
+        const addedTasks = autoTasks.map((t) => ({
+          id: `task_${Date.now()}_${Math.random()}`,
+          title: t.title,
+          description: t.description,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          dueDate:
+            t.dueInDays !== undefined
+              ? new Date(Date.now() + t.dueInDays * 86400000).toISOString()
+              : undefined,
+        }))
+        const { tasks, activeFlows } = processTagsForFlows(
+          lead,
+          autoTags,
+          [...(lead.tasks || []), ...addedTasks],
+          lead.activeFlows || [],
+          aiFlows,
+        )
         return {
           ...lead,
-          stage: toStage,
+          stage: to,
           timeInStage: '0m',
-          lostReason: reason ? reason : lead.lostReason,
+          lostReason: r || lead.lostReason,
           tags: newTags,
-          tasks: newTasks,
+          tasks,
+          activeFlows,
         }
       }),
     )
-  }
-
-  const addLead = (lead: Lead) => {
-    setLeads((prev) => [lead, ...prev])
-  }
-
-  const markAsRead = (leadId: string) => {
-    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, unread: false } : l)))
-  }
-
-  const updateLeadStageNames = (oldName: string, newName: string) => {
-    setLeads((prev) => prev.map((l) => (l.stage === oldName ? { ...l, stage: newName } : l)))
   }
 
   const toggleTask = (leadId: string, taskId: string) => {
     setLeads((prev) =>
       prev.map((lead) => {
         if (lead.id !== leadId) return lead
-        return {
-          ...lead,
-          tasks: (lead.tasks || []).map((t) =>
-            t.id === taskId ? { ...t, completed: !t.completed } : t,
-          ),
-        }
-      }),
-    )
-  }
-
-  const addTask = (leadId: string, task: Task) => {
-    setLeads((prev) =>
-      prev.map((lead) => {
-        if (lead.id !== leadId) return lead
-        return { ...lead, tasks: [task, ...(lead.tasks || [])] }
+        const { tasks, activeFlows } = processTaskCompletionForFlows(
+          taskId,
+          lead.tasks || [],
+          lead.activeFlows || [],
+          aiFlows,
+        )
+        return { ...lead, tasks, activeFlows }
       }),
     )
   }
@@ -118,12 +90,28 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   const addTagToLead = (leadId: string, tag: string) => {
     setLeads((prev) =>
       prev.map((lead) => {
-        if (lead.id !== leadId) return lead
-        if (lead.tags.includes(tag)) return lead
-        return { ...lead, tags: [...lead.tags, tag] }
+        if (lead.id !== leadId || lead.tags.includes(tag)) return lead
+        const { tasks, activeFlows } = processTagsForFlows(
+          lead,
+          [tag],
+          lead.tasks || [],
+          lead.activeFlows || [],
+          aiFlows,
+        )
+        return { ...lead, tags: [...lead.tags, tag], tasks, activeFlows }
       }),
     )
   }
+
+  const addTask = (leadId: string, task: Task) =>
+    setLeads((p) =>
+      p.map((l) => (l.id === leadId ? { ...l, tasks: [task, ...(l.tasks || [])] } : l)),
+    )
+  const addLead = (lead: Lead) => setLeads((p) => [lead, ...p])
+  const markAsRead = (id: string) =>
+    setLeads((p) => p.map((l) => (l.id === id ? { ...l, unread: false } : l)))
+  const updateLeadStageNames = (o: string, n: string) =>
+    setLeads((p) => p.map((l) => (l.stage === o ? { ...l, stage: n } : l)))
 
   const value = {
     leads: leads.filter(
@@ -133,7 +121,6 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     selectedLead,
     searchQuery,
     setSearchQuery,
-    setSelectedLead: (lead: Lead | null) => setSelectedLeadId(lead ? lead.id : null),
     moveLead,
     addLead,
     markAsRead,
@@ -141,15 +128,14 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     toggleTask,
     addTask,
     addTagToLead,
+    setSelectedLead: (l: Lead | null) => setSelectedLeadId(l ? l.id : null),
   }
 
   return <LeadContext.Provider value={value}>{children}</LeadContext.Provider>
 }
 
 export default function useLeadStore() {
-  const context = useContext(LeadContext)
-  if (context === undefined) {
-    throw new Error('useLeadStore must be used within a LeadProvider')
-  }
-  return context
+  const ctx = useContext(LeadContext)
+  if (!ctx) throw new Error('useLeadStore must be used within LeadProvider')
+  return ctx
 }
