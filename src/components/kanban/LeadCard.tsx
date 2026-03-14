@@ -161,34 +161,56 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
             {lead.assignee}
           </span>
           <div className="flex items-center gap-2 ml-auto">
-            {hasPending && (
+            {(hasPending || activeFlow) && (
               <Tooltip>
                 <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
                   <div
                     className={cn(
                       'flex items-center gap-1 transition-colors cursor-help',
-                      hasOverdue ? 'text-destructive font-bold' : 'text-amber-500 font-medium',
+                      hasOverdue
+                        ? 'text-destructive font-bold'
+                        : hasPending
+                          ? 'text-amber-500 font-medium'
+                          : 'text-blue-500 font-medium',
                     )}
                   >
                     <CalendarClock className="w-3.5 h-3.5" />
-                    <span>{pendingTasks.length}</span>
+                    {activeFlow ? (
+                      <span className="text-[14px] leading-none font-bold">
+                        {activeFlow.currentStepOrder}
+                      </span>
+                    ) : (
+                      <span>{pendingTasks.length}</span>
+                    )}
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[200px] space-y-1 z-50">
-                  <p className="font-semibold text-xs mb-1">Tarefas Pendentes</p>
-                  {pendingTasks.slice(0, 3).map((t) => (
-                    <p
-                      key={t.id}
-                      className={cn(
-                        'text-[10px] truncate',
-                        t.dueDate && new Date(t.dueDate) < now ? 'text-destructive' : '',
+                  {hasPending && (
+                    <>
+                      <p className="font-semibold text-xs mb-1">Tarefas Pendentes</p>
+                      {pendingTasks.slice(0, 3).map((t) => (
+                        <p
+                          key={t.id}
+                          className={cn(
+                            'text-[10px] truncate',
+                            t.dueDate && new Date(t.dueDate) < now ? 'text-destructive' : '',
+                          )}
+                        >
+                          - {t.title}
+                        </p>
+                      ))}
+                      {pendingTasks.length > 3 && (
+                        <p className="text-[10px] italic">+{pendingTasks.length - 3} mais</p>
                       )}
+                    </>
+                  )}
+                  {activeFlow && (
+                    <div
+                      className={cn('text-xs', hasPending && 'mt-2 pt-2 border-t border-border/50')}
                     >
-                      - {t.title}
-                    </p>
-                  ))}
-                  {pendingTasks.length > 3 && (
-                    <p className="text-[10px] italic">+{pendingTasks.length - 3} mais</p>
+                      Passo {activeFlow.currentStepOrder} - Fluxo IA:{' '}
+                      {flowDetails?.name || 'Desconhecido'}
+                    </div>
                   )}
                 </TooltipContent>
               </Tooltip>
@@ -199,23 +221,6 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
                 <Clock className="w-3 h-3 opacity-50" />
                 <span>{lead.timeInStage}</span>
               </div>
-
-              {activeFlow && (
-                <Tooltip>
-                  <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Badge
-                      variant="secondary"
-                      className="ml-0.5 h-4 min-w-[1rem] px-1 py-0 text-[9px] font-bold leading-none flex items-center justify-center cursor-help transition-all hover:bg-secondary/80"
-                    >
-                      {activeFlow.currentStepOrder}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs z-50">
-                    Passo {activeFlow.currentStepOrder} - Fluxo IA:{' '}
-                    {flowDetails?.name || 'Desconhecido'}
-                  </TooltipContent>
-                </Tooltip>
-              )}
             </div>
           </div>
         </div>
