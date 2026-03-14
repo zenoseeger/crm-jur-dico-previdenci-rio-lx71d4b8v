@@ -7,6 +7,7 @@ import {
   Settings,
   Scale,
   ShieldCheck,
+  ListTodo,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -23,6 +24,7 @@ import {
 
 const navItems = [
   { title: 'Pipeline', path: '/', icon: KanbanSquare },
+  { title: 'Tarefas', path: '/tarefas', icon: ListTodo },
   { title: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { title: 'Clientes', path: '/clientes', icon: Users },
   { title: 'Relatórios', path: '/relatorios', icon: BarChart3 },

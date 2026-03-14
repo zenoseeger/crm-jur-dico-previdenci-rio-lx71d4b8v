@@ -24,7 +24,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Edit2, Trash2, Plus, ArrowUp, ArrowDown, Settings, Check, X } from 'lucide-react'
+import { Edit2, Trash2, Plus, ArrowUp, ArrowDown, Settings, Check, X, Clock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export function PipelineManagement() {
@@ -49,6 +49,7 @@ export function PipelineManagement() {
 
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDesc, setTaskDesc] = useState('')
+  const [taskDueDays, setTaskDueDays] = useState<number>(0)
 
   const handleOpenDialog = (stage?: PipelineStage) => {
     if (stage) {
@@ -64,6 +65,7 @@ export function PipelineManagement() {
     }
     setTaskTitle('')
     setTaskDesc('')
+    setTaskDueDays(0)
     setIsOpen(true)
   }
 
@@ -124,11 +126,17 @@ export function PipelineManagement() {
       ...prev,
       autoTasks: [
         ...prev.autoTasks,
-        { id: `tpl_${Date.now()}`, title: taskTitle, description: taskDesc },
+        {
+          id: `tpl_${Date.now()}`,
+          title: taskTitle,
+          description: taskDesc,
+          dueInDays: taskDueDays,
+        },
       ],
     }))
     setTaskTitle('')
     setTaskDesc('')
+    setTaskDueDays(0)
   }
 
   const removeTask = (id: string) => {
@@ -158,7 +166,7 @@ export function PipelineManagement() {
               <Plus className="w-4 h-4 mr-2" /> Nova Etapa
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingStage ? 'Editar Etapa' : 'Criar Nova Etapa'}</DialogTitle>
               <DialogDescription>
@@ -212,12 +220,24 @@ export function PipelineManagement() {
                   <Label>Criar Tarefas Automaticamente</Label>
 
                   <div className="flex flex-col gap-2 p-3 bg-background border rounded-md shadow-sm">
-                    <Input
-                      placeholder="Título da tarefa..."
-                      value={taskTitle}
-                      onChange={(e) => setTaskTitle(e.target.value)}
-                      className="h-8 text-sm"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Título da tarefa..."
+                        value={taskTitle}
+                        onChange={(e) => setTaskTitle(e.target.value)}
+                        className="h-8 text-sm flex-1"
+                      />
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Label className="text-xs whitespace-nowrap">Prazo (Dias):</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={taskDueDays}
+                          onChange={(e) => setTaskDueDays(Number(e.target.value))}
+                          className="h-8 w-16 text-sm"
+                        />
+                      </div>
+                    </div>
                     <Textarea
                       placeholder="Descrição (opcional)..."
                       value={taskDesc}
@@ -242,8 +262,13 @@ export function PipelineManagement() {
                           key={t.id}
                           className="flex justify-between items-start p-2 bg-card border rounded shadow-sm"
                         >
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium">{t.title}</p>
+                          <div className="space-y-1 flex-1 pr-4">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium">{t.title}</p>
+                              <Badge variant="outline" className="text-[10px] h-4 px-1 gap-1">
+                                <Clock className="w-3 h-3" /> {t.dueInDays} dias
+                              </Badge>
+                            </div>
                             {t.description && (
                               <p className="text-xs text-muted-foreground line-clamp-2">
                                 {t.description}

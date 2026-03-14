@@ -50,13 +50,20 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const newTags = Array.from(new Set([...lead.tags, ...autoTags]))
-        const addedTasks = autoTasks.map((t) => ({
-          id: `task_${Date.now()}_${Math.random()}`,
-          title: t.title,
-          description: t.description,
-          completed: false,
-          createdAt: new Date().toISOString(),
-        }))
+        const addedTasks = autoTasks.map((t) => {
+          const dueDate = new Date()
+          if (t.dueInDays !== undefined) {
+            dueDate.setDate(dueDate.getDate() + t.dueInDays)
+          }
+          return {
+            id: `task_${Date.now()}_${Math.random()}`,
+            title: t.title,
+            description: t.description,
+            completed: false,
+            createdAt: new Date().toISOString(),
+            dueDate: t.dueInDays !== undefined ? dueDate.toISOString() : undefined,
+          }
+        })
 
         const newTasks = [...(lead.tasks || []), ...addedTasks]
 

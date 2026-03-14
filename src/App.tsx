@@ -12,6 +12,7 @@ import Clients from './pages/Clients'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Administration from './pages/Administration'
+import Tasks from './pages/Tasks'
 import NotFound from './pages/NotFound'
 
 const App = () => (
@@ -24,6 +25,7 @@ const App = () => (
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<Index />} />
+              <Route path="/tarefas" element={<Tasks />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/clientes" element={<Clients />} />
               <Route path="/relatorios" element={<Reports />} />

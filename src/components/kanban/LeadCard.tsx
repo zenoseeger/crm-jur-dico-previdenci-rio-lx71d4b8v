@@ -1,5 +1,5 @@
 import React from 'react'
-import { Clock, MessageCircle, MoreVertical } from 'lucide-react'
+import { Clock, MessageCircle, MoreVertical, CalendarClock } from 'lucide-react'
 import { Lead } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import useLeadStore from '@/stores/useLeadStore'
 import { useAdminStore } from '@/stores/useAdminStore'
 
@@ -45,13 +46,18 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
     moveLead(lead.id, stageName, undefined, stage?.autoTags, stage?.autoTasks)
   }
 
+  const pendingTasks = lead.tasks?.filter((t) => !t.completed) || []
+  const hasPending = pendingTasks.length > 0
+  const now = new Date()
+  const hasOverdue = pendingTasks.some((t) => t.dueDate && new Date(t.dueDate) < now)
+
   return (
     <Card
       draggable
       onDragStart={handleDragStart}
       onClick={onOpen}
       className={cn(
-        'cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group border border-border/50',
+        'cursor-pointer hover:shadow-md transition-shadow relative overflow-visible group border border-border/50',
         lead.unread ? 'bg-primary/5' : 'bg-card',
       )}
     >
@@ -119,9 +125,43 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
           <span className="truncate max-w-[100px] font-medium text-foreground/70">
             {lead.assignee}
           </span>
-          <div className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            <span>{lead.timeInStage}</span>
+          <div className="flex items-center gap-3 ml-auto">
+            {hasPending && (
+              <Tooltip>
+                <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className={cn(
+                      'flex items-center gap-1 transition-colors cursor-help',
+                      hasOverdue ? 'text-destructive font-bold' : 'text-amber-500 font-medium',
+                    )}
+                  >
+                    <CalendarClock className="w-3.5 h-3.5" />
+                    <span>{pendingTasks.length}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[200px] space-y-1 z-50">
+                  <p className="font-semibold text-xs mb-1">Tarefas Pendentes</p>
+                  {pendingTasks.slice(0, 3).map((t) => (
+                    <p
+                      key={t.id}
+                      className={cn(
+                        'text-[10px] truncate',
+                        t.dueDate && new Date(t.dueDate) < now ? 'text-destructive' : '',
+                      )}
+                    >
+                      - {t.title}
+                    </p>
+                  ))}
+                  {pendingTasks.length > 3 && (
+                    <p className="text-[10px] italic">+{pendingTasks.length - 3} mais</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <div className="flex items-center gap-1" title="Tempo na etapa">
+              <Clock className="w-3 h-3 opacity-50" />
+              <span>{lead.timeInStage}</span>
+            </div>
           </div>
         </div>
       </CardContent>

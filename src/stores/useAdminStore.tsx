@@ -63,6 +63,7 @@ const initialPipelineStages: PipelineStage[] = [
         id: 'tpl_1',
         title: 'Enviar mensagem de boas-vindas',
         description: 'Apresentar a equipe e os próximos passos.',
+        dueInDays: 1,
       },
     ],
   },

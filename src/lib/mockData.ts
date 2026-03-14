@@ -1,5 +1,8 @@
 import { Lead, ChatMessage, DocumentReq } from '@/types'
 
+const yesterday = new Date(Date.now() - 86400000).toISOString()
+const tomorrow = new Date(Date.now() + 86400000).toISOString()
+
 export const MOCK_LEADS: Lead[] = [
   {
     id: 'l1',
@@ -14,6 +17,16 @@ export const MOCK_LEADS: Lead[] = [
     city: 'São Paulo, SP',
     assignee: 'SDR João',
     aiScore: 85,
+    tasks: [
+      {
+        id: 't1',
+        title: 'Ligar para confirmar dados',
+        description: 'Verificar se trabalhou em regime de economia familiar.',
+        completed: false,
+        createdAt: new Date().toISOString(),
+        dueDate: yesterday,
+      },
+    ],
   },
   {
     id: 'l2',
@@ -28,6 +41,24 @@ export const MOCK_LEADS: Lead[] = [
     city: 'Belo Horizonte, MG',
     assignee: 'SDR João',
     aiScore: 92,
+    tasks: [
+      {
+        id: 't2',
+        title: 'Enviar formulário de saúde',
+        description: '',
+        completed: false,
+        createdAt: new Date().toISOString(),
+        dueDate: tomorrow,
+      },
+      {
+        id: 't3',
+        title: 'Verificar restrições de renda',
+        description: '',
+        completed: true,
+        createdAt: new Date().toISOString(),
+        dueDate: yesterday,
+      },
+    ],
   },
   {
     id: 'l3',

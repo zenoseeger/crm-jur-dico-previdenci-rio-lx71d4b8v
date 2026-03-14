@@ -6,6 +6,7 @@ export interface TaskTemplate {
   id: string
   title: string
   description: string
+  dueInDays: number
 }
 
 export interface Task {
@@ -14,6 +15,7 @@ export interface Task {
   description: string
   completed: boolean
   createdAt: string
+  dueDate?: string
 }
 
 export interface PipelineStage {
