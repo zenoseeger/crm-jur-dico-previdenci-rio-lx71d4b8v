@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAdminStore } from '@/stores/useAdminStore'
+import { LogoutConfirm } from '@/components/auth/LogoutConfirm'
 import { toast } from 'sonner'
 import {
   User,
@@ -31,6 +32,7 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  LogOut,
 } from 'lucide-react'
 
 export default function Settings() {
@@ -100,7 +102,7 @@ export default function Settings() {
           </TabsList>
 
           <div className="flex-1 min-w-0">
-            <TabsContent value="profile" className="m-0 border-none p-0 outline-none">
+            <TabsContent value="profile" className="m-0 border-none p-0 outline-none space-y-6">
               <Card className="border-slate-200 shadow-sm">
                 <CardHeader>
                   <CardTitle>Informações do Perfil</CardTitle>
@@ -138,6 +140,26 @@ export default function Settings() {
                     Salvar Perfil
                   </Button>
                 </CardFooter>
+              </Card>
+
+              <Card className="border-destructive/20 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-destructive">Sessão e Segurança</CardTitle>
+                  <CardDescription>
+                    Gerencie o acesso da sua conta neste dispositivo.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Ao encerrar sua sessão, você precisará informar suas credenciais novamente na
+                    próxima vez que acessar o CRM.
+                  </p>
+                  <LogoutConfirm>
+                    <Button variant="destructive" className="gap-2">
+                      <LogOut className="w-4 h-4" /> Sair da Conta
+                    </Button>
+                  </LogoutConfirm>
+                </CardContent>
               </Card>
             </TabsContent>
 

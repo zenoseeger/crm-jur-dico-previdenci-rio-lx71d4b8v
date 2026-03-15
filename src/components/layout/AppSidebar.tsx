@@ -8,6 +8,7 @@ import {
   Scale,
   ShieldCheck,
   ListTodo,
+  LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -20,7 +21,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
 } from '@/components/ui/sidebar'
+import { LogoutConfirm } from '@/components/auth/LogoutConfirm'
 
 const navItems = [
   { title: 'Pipeline', path: '/', icon: KanbanSquare },
@@ -78,6 +81,22 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <LogoutConfirm>
+              <SidebarMenuButton
+                tooltip="Sair do sistema"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive group-data-[collapsible=icon]:justify-center"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sair do sistema</span>
+              </SidebarMenuButton>
+            </LogoutConfirm>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

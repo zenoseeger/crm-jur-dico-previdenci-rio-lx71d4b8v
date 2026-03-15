@@ -1,9 +1,10 @@
-import { Bell, Search, UserCircle, LogOut, User as UserIcon } from 'lucide-react'
+import { Bell, Search, UserCircle, User as UserIcon, LogOut } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import useLeadStore from '@/stores/useLeadStore'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { LogoutConfirm } from '@/components/auth/LogoutConfirm'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,7 @@ import {
 
 export function Header() {
   const { searchQuery, setSearchQuery } = useLeadStore()
-  const { user, logout } = useAuthStore()
+  const { user } = useAuthStore()
 
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-20">
@@ -58,13 +59,15 @@ export function Header() {
               <UserIcon className="mr-2 h-4 w-4" />
               <span>Perfil</span>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={logout}
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Sair do sistema</span>
-            </DropdownMenuItem>
+            <LogoutConfirm>
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sair do sistema</span>
+              </DropdownMenuItem>
+            </LogoutConfirm>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
