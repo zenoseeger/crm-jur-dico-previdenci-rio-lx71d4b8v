@@ -20,6 +20,16 @@ export interface Task {
   stepOrder?: number
 }
 
+export interface DocumentFile {
+  id: string
+  leadId: string
+  name: string
+  size: number
+  type: string
+  uploadDate: string
+  url: string
+}
+
 export interface Pipeline {
   id: string
   name: string
@@ -55,6 +65,7 @@ export interface Lead {
   lostReason?: string
   tasks?: Task[]
   activeFlows?: { flowId: string; currentStepOrder: number }[]
+  documents?: DocumentFile[]
 }
 
 export interface ChatMessage {

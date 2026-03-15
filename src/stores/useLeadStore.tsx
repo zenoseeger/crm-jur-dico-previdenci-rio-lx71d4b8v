@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react'
-import { Lead, Stage, Task, TaskTemplate } from '@/types'
+import { Lead, Stage, Task, TaskTemplate, DocumentFile } from '@/types'
 import { MOCK_LEADS } from '@/lib/mockData'
 import { processTagsForFlows, processTaskCompletionForFlows } from '@/lib/flowLogic'
 import { useAdminStore } from '@/stores/useAdminStore'
@@ -21,6 +21,8 @@ interface LeadStore {
   addTagToLead: (leadId: string, tag: string) => void
   toggleLeadAI: (leadId: string, enabled: boolean) => void
   markAITriggered: (leadId: string) => void
+  addDocument: (leadId: string, doc: DocumentFile) => void
+  removeDocument: (leadId: string, docId: string) => void
 }
 
 const LeadContext = createContext<LeadStore | undefined>(undefined)
@@ -123,6 +125,22 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   const markAITriggered = (leadId: string) =>
     setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, aiTriggered: true } : l)))
 
+  const addDocument = (leadId: string, doc: DocumentFile) => {
+    setLeads((p) =>
+      p.map((l) => (l.id === leadId ? { ...l, documents: [doc, ...(l.documents || [])] } : l)),
+    )
+  }
+
+  const removeDocument = (leadId: string, docId: string) => {
+    setLeads((p) =>
+      p.map((l) =>
+        l.id === leadId
+          ? { ...l, documents: (l.documents || []).filter((d) => d.id !== docId) }
+          : l,
+      ),
+    )
+  }
+
   const value = {
     leads: leads.filter(
       (l) =>
@@ -142,6 +160,8 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     addTagToLead,
     toggleLeadAI,
     markAITriggered,
+    addDocument,
+    removeDocument,
     setSelectedLead: (l: Lead | null) => setSelectedLeadId(l ? l.id : null),
   }
 

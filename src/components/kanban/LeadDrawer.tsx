@@ -126,7 +126,7 @@ export function LeadDrawer() {
               value="docs"
               className="m-0 p-6 h-full focus-visible:outline-none animate-fade-in"
             >
-              <DocsTab />
+              <DocsTab lead={selectedLead} />
             </TabsContent>
             <TabsContent
               value="qual"
