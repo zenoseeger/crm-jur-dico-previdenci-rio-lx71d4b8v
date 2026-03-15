@@ -79,6 +79,9 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     temperature: 0.7,
     enabled: true,
     knowledgeBase: '',
+    triggerMode: 'always',
+    triggerCondition: 'contains',
+    triggerKeyword: '',
   })
   const [whatsAppConfig, setWhatsAppConfig] = useState<WhatsAppConfig>({
     token: '',

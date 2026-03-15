@@ -50,6 +50,7 @@ export interface Lead {
   assignee: string
   aiScore: number
   aiEnabled?: boolean
+  aiTriggered?: boolean
   lastMessageAt?: string
   lostReason?: string
   tasks?: Task[]
@@ -99,6 +100,9 @@ export interface AIConfig {
   temperature: number
   enabled: boolean
   knowledgeBase: string
+  triggerMode: 'always' | 'keyword'
+  triggerCondition: 'contains' | 'equals'
+  triggerKeyword: string
 }
 
 export interface WhatsAppConfig {

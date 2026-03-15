@@ -19,6 +19,7 @@ export const MOCK_LEADS: Lead[] = [
     assignee: 'SDR João',
     aiScore: 85,
     aiEnabled: true,
+    aiTriggered: true,
     tasks: [
       {
         id: 't1',
@@ -45,6 +46,7 @@ export const MOCK_LEADS: Lead[] = [
     assignee: 'SDR João',
     aiScore: 92,
     aiEnabled: true,
+    aiTriggered: false,
     tasks: [
       {
         id: 't2',
@@ -79,6 +81,7 @@ export const MOCK_LEADS: Lead[] = [
     assignee: 'SDR Ana',
     aiScore: 88,
     aiEnabled: true,
+    aiTriggered: false,
   },
   {
     id: 'l4',
@@ -95,6 +98,7 @@ export const MOCK_LEADS: Lead[] = [
     assignee: 'Dr. Roberto',
     aiScore: 75,
     aiEnabled: true,
+    aiTriggered: true,
   },
   {
     id: 'l5',
@@ -111,6 +115,7 @@ export const MOCK_LEADS: Lead[] = [
     assignee: 'Closer Paula',
     aiScore: 95,
     aiEnabled: true,
+    aiTriggered: true,
     activeFlows: [{ flowId: 'f1', currentStepOrder: 1 }],
     tasks: [
       {

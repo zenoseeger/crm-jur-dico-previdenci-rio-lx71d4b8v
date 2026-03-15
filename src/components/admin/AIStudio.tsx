@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Save, Send, Sparkles, RefreshCcw, Eye, EyeOff } from 'lucide-react'
+import { Save, Send, Sparkles, RefreshCcw, Eye, EyeOff, KeyRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -38,10 +38,15 @@ export function AIStudio() {
   ])
   const [message, setMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [sandboxTriggered, setSandboxTriggered] = useState(false)
 
   const handleSave = () => {
     if (!formData.apiKey.trim()) {
       toast.error('A API Key da OpenAI é obrigatória.')
+      return
+    }
+    if (formData.triggerMode === 'keyword' && !formData.triggerKeyword.trim()) {
+      toast.error('Informe a palavra-chave para o gatilho.')
       return
     }
     updateAIConfig(formData)
@@ -67,6 +72,25 @@ export function AIStudio() {
       return
     }
 
+    let shouldTrigger = false
+    if (formData.triggerMode === 'always' || sandboxTriggered) {
+      shouldTrigger = true
+    } else if (formData.triggerMode === 'keyword') {
+      const msgText = userMsg.toLowerCase()
+      const kw = formData.triggerKeyword.toLowerCase()
+      if (formData.triggerCondition === 'equals' && msgText.trim() === kw.trim()) {
+        shouldTrigger = true
+      } else if (formData.triggerCondition === 'contains' && msgText.includes(kw)) {
+        shouldTrigger = true
+      }
+    }
+
+    if (!shouldTrigger) {
+      return // Silently wait for keyword
+    }
+
+    if (!sandboxTriggered) setSandboxTriggered(true)
+
     setIsTyping(true)
     setTimeout(() => {
       const historyContext =
@@ -91,7 +115,7 @@ export function AIStudio() {
           <div className="space-y-1">
             <CardTitle>Configurações de IA</CardTitle>
             <CardDescription>
-              Ajuste credenciais, contexto global e o status do Agente IA.
+              Ajuste credenciais, regras de ativação e contexto global.
             </CardDescription>
           </div>
           <div
@@ -187,6 +211,69 @@ export function AIStudio() {
           </div>
 
           <div className="space-y-4 pt-4 border-t">
+            <div className="flex items-center gap-2 mb-2">
+              <KeyRound className="w-4 h-4 text-muted-foreground" />
+              <Label className="text-base">Regras de Ativação (Gatilho)</Label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Modo de Ativação</Label>
+                <Select
+                  value={formData.triggerMode}
+                  onValueChange={(val: 'always' | 'keyword') =>
+                    setFormData({ ...formData, triggerMode: val })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="always">Sempre Ativo</SelectItem>
+                    <SelectItem value="keyword">Por Palavra-chave</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.triggerMode === 'keyword' && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label>Condição da Mensagem</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.triggerCondition}
+                      onValueChange={(val: 'contains' | 'equals') =>
+                        setFormData({ ...formData, triggerCondition: val })
+                      }
+                    >
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="contains">Contém</SelectItem>
+                        <SelectItem value="equals">É igual a</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder="Ex: iniciar"
+                      value={formData.triggerKeyword}
+                      onChange={(e) => setFormData({ ...formData, triggerKeyword: e.target.value })}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            {formData.triggerMode === 'keyword' && (
+              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-md border border-border/50">
+                O Agente permanecerá pausado para novos leads até que a mensagem deles{' '}
+                {formData.triggerCondition === 'contains' ? 'contenha' : 'seja exatamente'}{' '}
+                <span className="font-semibold text-foreground">
+                  "{formData.triggerKeyword || '...'}"
+                </span>
+                .
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-4 pt-4 border-t">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label>System Prompt Inicial</Label>
@@ -215,11 +302,11 @@ export function AIStudio() {
               </div>
               <p className="text-xs text-muted-foreground mb-2">
                 Insira regras do escritório, FAQs, procedimentos e diretrizes legais que a IA deve
-                consultar para responder aos leads.
+                consultar.
               </p>
               <Textarea
-                className="min-h-[120px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900 resize-none"
-                placeholder="Ex: 'Regras: Sempre confirmar se o lead possui senha do Meu INSS. Para Aposentadoria Rural, perguntar se possui bloco de produtor rural...'"
+                className="min-h-[100px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900 resize-none"
+                placeholder="Ex: 'Regras: Sempre confirmar se o lead possui senha do Meu INSS...'"
                 value={formData.knowledgeBase}
                 onChange={(e) => setFormData({ ...formData, knowledgeBase: e.target.value })}
               />
@@ -239,8 +326,15 @@ export function AIStudio() {
 
       <Card className="lg:col-span-5 border-slate-200 shadow-sm flex flex-col h-[700px] lg:h-auto">
         <CardHeader className="bg-slate-900 text-white rounded-t-lg pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-500" /> Sandbox de Teste
+          <CardTitle className="text-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-500" /> Sandbox de Teste
+            </div>
+            {formData.triggerMode === 'keyword' && !sandboxTriggered && (
+              <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-1 rounded-full font-medium">
+                Aguardando: "{formData.triggerKeyword}"
+              </span>
+            )}
           </CardTitle>
           <CardDescription className="text-slate-300">
             Simule conversas como se fosse o Lead.

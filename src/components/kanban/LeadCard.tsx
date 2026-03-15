@@ -1,5 +1,5 @@
 import React from 'react'
-import { Clock, MessageCircle, MoreVertical, CalendarClock } from 'lucide-react'
+import { Clock, MessageCircle, MoreVertical, CalendarClock, Bot, KeyRound, Ban } from 'lucide-react'
 import { Lead } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +21,7 @@ interface LeadCardProps {
 
 export function LeadCard({ lead, onOpen }: LeadCardProps) {
   const { moveLead } = useLeadStore()
-  const { pipelineStages, tags: adminTags, aiFlows } = useAdminStore()
+  const { pipelineStages, tags: adminTags, aiFlows, aiConfig } = useAdminStore()
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('leadId', lead.id)
@@ -77,6 +77,11 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
   )
   const stepNumber = activeStage ? activeStage.order + 1 : 0
 
+  const aiEnabledForLead = lead.aiEnabled !== false
+  const globalAiEnabled = aiConfig.enabled
+  const isWaitingKeyword =
+    globalAiEnabled && aiEnabledForLead && aiConfig.triggerMode === 'keyword' && !lead.aiTriggered
+
   return (
     <Card
       draggable
@@ -93,10 +98,32 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
 
       <CardContent className="p-3 space-y-3">
         <div className="flex justify-between items-start">
-          <div className="space-y-1 pr-6">
-            <h4 className="font-semibold text-sm leading-tight text-foreground truncate">
-              {lead.name}
-            </h4>
+          <div className="space-y-1 pr-6 flex-1">
+            <div className="flex items-center gap-1">
+              <h4 className="font-semibold text-sm leading-tight text-foreground truncate max-w-[85%]">
+                {lead.name}
+              </h4>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help shrink-0">
+                    {!aiEnabledForLead || !globalAiEnabled ? (
+                      <Ban className="w-3.5 h-3.5 text-destructive" />
+                    ) : isWaitingKeyword ? (
+                      <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                    ) : (
+                      <Bot className="w-3.5 h-3.5 text-emerald-500" />
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {!aiEnabledForLead || !globalAiEnabled
+                    ? 'Agente IA Desativado'
+                    : isWaitingKeyword
+                      ? `Aguardando Palavra-chave: "${aiConfig.triggerKeyword}"`
+                      : 'Agente IA Ativo'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <div className="flex items-center text-xs text-muted-foreground gap-1">
               <MessageCircle className="w-3 h-3 text-emerald-500" />
               <span>{lead.phone}</span>

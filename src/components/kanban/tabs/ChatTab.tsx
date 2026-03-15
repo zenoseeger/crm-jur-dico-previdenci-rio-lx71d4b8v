@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Send, Bot } from 'lucide-react'
+import { Send, Bot, KeyRound, CheckCircle2 } from 'lucide-react'
 import { Lead, ChatMessage } from '@/types'
 import { MOCK_CHAT } from '@/lib/mockData'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -19,11 +19,14 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const [input, setInput] = useState('')
   const [sendAsLead, setSendAsLead] = useState(false)
 
-  const { toggleLeadAI } = useLeadStore()
+  const { toggleLeadAI, markAITriggered } = useLeadStore()
   const { aiConfig } = useAdminStore()
 
   const aiEnabledForLead = lead.aiEnabled !== false
   const globalAiEnabled = aiConfig.enabled
+
+  const isWaitingKeyword =
+    globalAiEnabled && aiEnabledForLead && aiConfig.triggerMode === 'keyword' && !lead.aiTriggered
 
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,30 +44,48 @@ export function ChatTab({ lead }: { lead: Lead }) {
     setMessages(nextMessages)
     setInput('')
 
-    // Simulate Conversation Context Awareness
     if (sendAsLead && aiEnabledForLead && globalAiEnabled) {
-      setTimeout(() => {
-        const previousMsgs = nextMessages.slice(-4)
-        const contextStr = previousMsgs
-          .map((m) => `${m.sender === 'lead' ? 'Lead' : 'Atendente'}: ${m.text}`)
-          .join(' | ')
-          .substring(0, 120)
+      let shouldTrigger = false
 
-        const aiResponse: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          leadId: lead.id,
-          sender: 'ai',
-          text: `Baseando-me no contexto anterior ("...${contextStr}...") e consultando a Base de Conhecimento do escritório, compreendi sua dúvida. Como posso auxiliar com as documentações restantes?`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      if (aiConfig.triggerMode === 'always' || lead.aiTriggered) {
+        shouldTrigger = true
+      } else if (aiConfig.triggerMode === 'keyword') {
+        const msgText = newMsg.text.toLowerCase()
+        const kw = aiConfig.triggerKeyword.toLowerCase()
+        if (aiConfig.triggerCondition === 'equals' && msgText.trim() === kw.trim()) {
+          shouldTrigger = true
+        } else if (aiConfig.triggerCondition === 'contains' && msgText.includes(kw)) {
+          shouldTrigger = true
         }
-        setMessages((prev) => [...prev, aiResponse])
-      }, 1500)
+      }
+
+      if (shouldTrigger) {
+        if (!lead.aiTriggered) {
+          markAITriggered(lead.id)
+        }
+        setTimeout(() => {
+          const previousMsgs = nextMessages.slice(-4)
+          const contextStr = previousMsgs
+            .map((m) => `${m.sender === 'lead' ? 'Lead' : 'Atendente'}: ${m.text}`)
+            .join(' | ')
+            .substring(0, 120)
+
+          const aiResponse: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            leadId: lead.id,
+            sender: 'ai',
+            text: `Baseando-me no contexto anterior ("...${contextStr}...") e consultando a Base de Conhecimento do escritório, compreendi sua dúvida. Como posso auxiliar com as documentações restantes?`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }
+          setMessages((prev) => [...prev, aiResponse])
+        }, 1500)
+      }
     }
   }
 
   return (
     <div className="flex flex-col h-full bg-[#E5DDD5]/20 dark:bg-muted/10 rounded-md border overflow-hidden relative">
-      <div className="bg-background border-b p-3 flex justify-between items-center z-10 shadow-sm">
+      <div className="bg-background border-b p-3 flex justify-between items-center z-10 shadow-sm flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
             {lead.name.charAt(0)}
@@ -75,14 +96,29 @@ export function ChatTab({ lead }: { lead: Lead }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {(!aiEnabledForLead || !globalAiEnabled) && (
+          {!aiEnabledForLead || !globalAiEnabled ? (
             <Badge
               variant="destructive"
               className="h-6 px-2 text-[10px] font-bold shadow-sm whitespace-nowrap uppercase tracking-wider"
             >
               Agente Desativado
             </Badge>
+          ) : isWaitingKeyword ? (
+            <Badge
+              variant="outline"
+              className="h-6 px-2 text-[10px] font-bold shadow-sm whitespace-nowrap bg-amber-500/10 text-amber-600 border-amber-500/30 gap-1"
+            >
+              <KeyRound className="w-3 h-3" /> Aguardando Gatilho
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="h-6 px-2 text-[10px] font-bold shadow-sm whitespace-nowrap bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1"
+            >
+              <CheckCircle2 className="w-3 h-3" /> Agente Ativo
+            </Badge>
           )}
+
           <div
             className={cn(
               'flex items-center gap-2 p-1.5 rounded-full px-3 border transition-colors',
