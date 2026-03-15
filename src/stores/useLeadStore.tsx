@@ -19,6 +19,7 @@ interface LeadStore {
   toggleTask: (leadId: string, taskId: string) => void
   addTask: (leadId: string, task: Task) => void
   addTagToLead: (leadId: string, tag: string) => void
+  toggleLeadAI: (leadId: string, enabled: boolean) => void
 }
 
 const LeadContext = createContext<LeadStore | undefined>(undefined)
@@ -116,6 +117,8 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     setLeads((p) =>
       p.map((l) => (l.pipelineId === pipelineId && l.stage === o ? { ...l, stage: n } : l)),
     )
+  const toggleLeadAI = (leadId: string, enabled: boolean) =>
+    setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, aiEnabled: enabled } : l)))
 
   const value = {
     leads: leads.filter(
@@ -134,6 +137,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     toggleTask,
     addTask,
     addTagToLead,
+    toggleLeadAI,
     setSelectedLead: (l: Lead | null) => setSelectedLeadId(l ? l.id : null),
   }
 

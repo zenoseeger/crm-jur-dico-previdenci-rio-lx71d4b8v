@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Save, Send, Sparkles, RefreshCcw, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -52,16 +53,31 @@ export function AIStudio() {
     const userMsg = message
     setChat((prev) => [...prev, { role: 'user', text: userMsg }])
     setMessage('')
-    setIsTyping(true)
 
-    // Mock AI response
+    if (!formData.enabled) {
+      setTimeout(() => {
+        setChat((prev) => [
+          ...prev,
+          {
+            role: 'ai',
+            text: '⚠️ O Agente de IA está desativado globalmente. Nenhuma resposta será gerada automaticamente.',
+          },
+        ])
+      }, 500)
+      return
+    }
+
+    setIsTyping(true)
     setTimeout(() => {
-      const keySuffix = formData.apiKey ? `***${formData.apiKey.slice(-4)}` : 'Nenhuma'
+      const historyContext =
+        chat.length > 1 ? `${chat.length} mensagens anteriores` : 'nenhum histórico'
+      const kbContext = formData.knowledgeBase.trim() ? ` e na Base de Conhecimento` : ''
+
       setChat((prev) => [
         ...prev,
         {
           role: 'ai',
-          text: `[Chave: ${keySuffix}] Com base no prompt (Modelo: ${formData.model}, Temp: ${formData.temperature}), minha resposta simulada para "${userMsg}" seria focar na coleta de documentos do CNIS.`,
+          text: `[Contexto da Conversa: ${historyContext}${kbContext}] Minha resposta simulada para "${userMsg}" seria focada na coleta do extrato CNIS, conforme diretrizes do escritório.`,
         },
       ])
       setIsTyping(false)
@@ -71,13 +87,40 @@ export function AIStudio() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <Card className="lg:col-span-7 border-slate-200 shadow-sm flex flex-col">
-        <CardHeader>
-          <CardTitle>Configurações de IA</CardTitle>
-          <CardDescription>
-            Configure suas credenciais da OpenAI e ajuste o comportamento do assistente.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between pb-4">
+          <div className="space-y-1">
+            <CardTitle>Configurações de IA</CardTitle>
+            <CardDescription>
+              Ajuste credenciais, contexto global e o status do Agente IA.
+            </CardDescription>
+          </div>
+          <div
+            className={cn(
+              'flex items-center gap-3 px-4 py-2 rounded-lg border transition-colors shadow-inner',
+              !formData.enabled
+                ? 'bg-destructive/10 border-destructive/30'
+                : 'bg-muted/50 border-border/50',
+            )}
+          >
+            <Label
+              htmlFor="global-ai-disable"
+              className={cn(
+                'cursor-pointer font-semibold text-sm',
+                !formData.enabled && 'text-destructive',
+              )}
+            >
+              Desativar Agente
+            </Label>
+            <Switch
+              id="global-ai-disable"
+              checked={!formData.enabled}
+              onCheckedChange={(val) => setFormData({ ...formData, enabled: !val })}
+              className="data-[state=checked]:bg-destructive"
+              title="Kill-switch global da IA"
+            />
+          </div>
         </CardHeader>
-        <CardContent className="space-y-6 flex-1">
+        <CardContent className="space-y-6 flex-1 pt-2">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>
@@ -105,9 +148,6 @@ export function AIStudio() {
                   )}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Sua chave é armazenada no estado da aplicação para uso nas gerações de follow-up.
-              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -146,23 +186,44 @@ export function AIStudio() {
             </div>
           </div>
 
-          <div className="space-y-2 pt-4 border-t">
-            <div className="flex justify-between items-center">
-              <Label>System Prompt</Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-xs gap-1"
-                onClick={() => setFormData({ ...formData, prompt: aiConfig.prompt })}
-              >
-                <RefreshCcw className="w-3 h-3" /> Restaurar
-              </Button>
+          <div className="space-y-4 pt-4 border-t">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label>System Prompt Inicial</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs gap-1"
+                  onClick={() => setFormData({ ...formData, prompt: aiConfig.prompt })}
+                >
+                  <RefreshCcw className="w-3 h-3" /> Restaurar
+                </Button>
+              </div>
+              <Textarea
+                className="min-h-[100px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900"
+                value={formData.prompt}
+                onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
+              />
             </div>
-            <Textarea
-              className="min-h-[150px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900"
-              value={formData.prompt}
-              onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
-            />
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label>Base de Conhecimento (Contexto Customizado)</Label>
+                <span className="text-xs text-muted-foreground font-medium bg-primary/10 text-primary px-2 py-0.5 rounded">
+                  RAG Local Integrado
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mb-2">
+                Insira regras do escritório, FAQs, procedimentos e diretrizes legais que a IA deve
+                consultar para responder aos leads.
+              </p>
+              <Textarea
+                className="min-h-[120px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900 resize-none"
+                placeholder="Ex: 'Regras: Sempre confirmar se o lead possui senha do Meu INSS. Para Aposentadoria Rural, perguntar se possui bloco de produtor rural...'"
+                value={formData.knowledgeBase}
+                onChange={(e) => setFormData({ ...formData, knowledgeBase: e.target.value })}
+              />
+            </div>
           </div>
         </CardContent>
         <CardFooter className="bg-slate-50 dark:bg-slate-900/50 justify-end py-4">
@@ -176,13 +237,13 @@ export function AIStudio() {
         </CardFooter>
       </Card>
 
-      <Card className="lg:col-span-5 border-slate-200 shadow-sm flex flex-col h-[600px] lg:h-auto">
+      <Card className="lg:col-span-5 border-slate-200 shadow-sm flex flex-col h-[700px] lg:h-auto">
         <CardHeader className="bg-slate-900 text-white rounded-t-lg pb-4">
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-500" /> Sandbox de Teste
           </CardTitle>
           <CardDescription className="text-slate-300">
-            Teste as configurações e a chave fornecida.
+            Simule conversas como se fosse o Lead.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0 flex-1 flex flex-col relative overflow-hidden">
@@ -198,7 +259,7 @@ export function AIStudio() {
                 >
                   <div
                     className={cn(
-                      'max-w-[85%] rounded-2xl px-4 py-2 text-sm',
+                      'max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm',
                       msg.role === 'user'
                         ? 'bg-amber-500 text-white rounded-tr-sm'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-sm border border-slate-200 dark:border-slate-700',
@@ -210,7 +271,7 @@ export function AIStudio() {
               ))}
               {isTyping && (
                 <div className="flex w-full justify-start animate-fade-in">
-                  <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-3 rounded-tl-sm border border-slate-200 dark:border-slate-700 flex gap-1">
+                  <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-3 rounded-tl-sm border border-slate-200 dark:border-slate-700 flex gap-1 shadow-sm">
                     <div
                       className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
                       style={{ animationDelay: '0ms' }}

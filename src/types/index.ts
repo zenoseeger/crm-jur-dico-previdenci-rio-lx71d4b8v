@@ -49,6 +49,7 @@ export interface Lead {
   city: string
   assignee: string
   aiScore: number
+  aiEnabled?: boolean
   lastMessageAt?: string
   lostReason?: string
   tasks?: Task[]
@@ -96,6 +97,8 @@ export interface AIConfig {
   prompt: string
   model: string
   temperature: number
+  enabled: boolean
+  knowledgeBase: string
 }
 
 export interface WhatsAppConfig {

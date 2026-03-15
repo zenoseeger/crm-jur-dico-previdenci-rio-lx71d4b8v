@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import useLeadStore from '@/stores/useLeadStore'
+import { useAdminStore } from '@/stores/useAdminStore'
 import {
   Plus,
   CheckCircle2,
@@ -22,10 +23,13 @@ import { ptBR } from 'date-fns/locale'
 
 export function TasksTab({ lead }: { lead: Lead }) {
   const { toggleTask, addTask } = useLeadStore()
+  const { aiConfig } = useAdminStore()
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskDesc, setNewTaskDesc] = useState('')
   const [newTaskDate, setNewTaskDate] = useState<Date | undefined>(undefined)
   const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+
+  const aiDisabled = !aiConfig.enabled || lead.aiEnabled === false
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,6 +50,8 @@ export function TasksTab({ lead }: { lead: Lead }) {
   }
 
   const generateAIFollowUp = () => {
+    if (aiDisabled) return
+
     setIsGeneratingAI(true)
     setTimeout(() => {
       setNewTaskTitle(`Follow-up de Contato: ${lead.stage}`)
@@ -69,8 +75,9 @@ export function TasksTab({ lead }: { lead: Lead }) {
             variant="outline"
             size="sm"
             onClick={generateAIFollowUp}
-            disabled={isGeneratingAI}
-            className="h-7 text-xs bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary transition-all"
+            disabled={isGeneratingAI || aiDisabled}
+            title={aiDisabled ? 'Agente IA está desativado' : ''}
+            className="h-7 text-xs bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary transition-all disabled:opacity-50"
           >
             {isGeneratingAI ? (
               <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />

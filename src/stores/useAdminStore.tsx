@@ -77,6 +77,8 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     prompt: '',
     model: 'gpt-4o',
     temperature: 0.7,
+    enabled: true,
+    knowledgeBase: '',
   })
   const [whatsAppConfig, setWhatsAppConfig] = useState<WhatsAppConfig>({
     token: '',

@@ -18,6 +18,7 @@ export const MOCK_LEADS: Lead[] = [
     city: 'São Paulo, SP',
     assignee: 'SDR João',
     aiScore: 85,
+    aiEnabled: true,
     tasks: [
       {
         id: 't1',
@@ -43,6 +44,7 @@ export const MOCK_LEADS: Lead[] = [
     city: 'Belo Horizonte, MG',
     assignee: 'SDR João',
     aiScore: 92,
+    aiEnabled: true,
     tasks: [
       {
         id: 't2',
@@ -76,6 +78,7 @@ export const MOCK_LEADS: Lead[] = [
     city: 'Curitiba, PR',
     assignee: 'SDR Ana',
     aiScore: 88,
+    aiEnabled: true,
   },
   {
     id: 'l4',
@@ -91,6 +94,7 @@ export const MOCK_LEADS: Lead[] = [
     city: 'Rio de Janeiro, RJ',
     assignee: 'Dr. Roberto',
     aiScore: 75,
+    aiEnabled: true,
   },
   {
     id: 'l5',
@@ -106,6 +110,7 @@ export const MOCK_LEADS: Lead[] = [
     city: 'Fortaleza, CE',
     assignee: 'Closer Paula',
     aiScore: 95,
+    aiEnabled: true,
     activeFlows: [{ flowId: 'f1', currentStepOrder: 1 }],
     tasks: [
       {
