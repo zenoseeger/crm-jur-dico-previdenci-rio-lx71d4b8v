@@ -3,7 +3,6 @@ import { User } from '@/types'
 
 interface RegisteredUser extends User {
   passwordHash: string
-  isVerified: boolean
 }
 
 interface AuthStore {
@@ -12,8 +11,6 @@ interface AuthStore {
   isLoading: boolean
   login: (email: string, pass: string) => Promise<void>
   register: (name: string, email: string, pass: string) => Promise<void>
-  verifyRegistration: (email: string, code: string) => Promise<void>
-  resendRegistrationCode: (email: string) => Promise<void>
   logout: () => void
 }
 
@@ -42,7 +39,6 @@ const getStoredUsers = (): RegisteredUser[] => {
       email: 'zhseeger@gmail.com',
       role: 'Admin',
       passwordHash: 'trip7*2017',
-      isVerified: true,
     },
     {
       id: 'u_admin',
@@ -50,7 +46,6 @@ const getStoredUsers = (): RegisteredUser[] => {
       email: 'admin@escritorio.com',
       role: 'Admin',
       passwordHash: 'Admin123',
-      isVerified: true,
     },
   ]
 
@@ -121,11 +116,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return
         }
 
-        if (!found.isVerified) {
-          reject(new Error('Please verify your email to continue.'))
-          return
-        }
-
         const loggedInUser: User = {
           id: found.id,
           name: found.name,
@@ -154,57 +144,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: email.trim(),
           role: 'Admin',
           passwordHash: pass,
-          isVerified: false,
         }
 
         users.push(newUser)
         saveStoredUsers(users)
-        resolve()
-      }, 800)
-    })
-  }
-
-  const verifyRegistration = async (email: string, code: string) => {
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        if (code !== '123456') {
-          reject(new Error('Código de verificação inválido.'))
-          return
-        }
-
-        const users = getStoredUsers()
-        const userIndex = users.findIndex(
-          (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
-        )
-        if (userIndex === -1) {
-          reject(new Error('Usuário não encontrado.'))
-          return
-        }
-
-        users[userIndex].isVerified = true
-        saveStoredUsers(users)
 
         const loggedInUser: User = {
-          id: users[userIndex].id,
-          name: users[userIndex].name,
-          email: users[userIndex].email,
-          role: users[userIndex].role,
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
         }
         setUser(loggedInUser)
         localStorage.setItem('crm_auth_user', JSON.stringify(loggedInUser))
-        resolve()
-      }, 800)
-    })
-  }
 
-  const resendRegistrationCode = async (email: string) => {
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        if (email && email.includes('@')) {
-          resolve()
-        } else {
-          reject(new Error('E-mail inválido.'))
-        }
+        resolve()
       }, 800)
     })
   }
@@ -222,8 +176,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         login,
         register,
-        verifyRegistration,
-        resendRegistrationCode,
         logout,
       }}
     >

@@ -41,12 +41,7 @@ export default function Login() {
 
       navigate(target, { replace: true })
     } catch (err: any) {
-      if (err.message === 'Please verify your email to continue.') {
-        toast.error('Por favor, verifique seu e-mail para continuar.')
-        navigate('/register', { state: { step: 'otp', email } })
-      } else {
-        toast.error(err.message)
-      }
+      toast.error(err.message)
     } finally {
       setLoading(false)
     }
