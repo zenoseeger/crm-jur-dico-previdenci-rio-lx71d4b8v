@@ -24,7 +24,9 @@ const getStoredUsers = (): RegisteredUser[] => {
   if (stored) {
     try {
       return JSON.parse(stored)
-    } catch (e) {}
+    } catch (e) {
+      // ignore parsing error
+    }
   }
   return [
     {
