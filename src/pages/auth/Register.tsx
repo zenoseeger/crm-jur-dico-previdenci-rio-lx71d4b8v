@@ -84,7 +84,7 @@ export default function Register() {
     try {
       await verifyRegistration(email, otp)
       toast.success('Conta verificada e ativada com sucesso!')
-      navigate('/')
+      navigate('/dashboard')
     } catch (err: any) {
       toast.error(err.message)
       setOtp('')
@@ -183,12 +183,12 @@ export default function Register() {
                 Cadastrar
               </Button>
               <div className="text-center text-sm text-muted-foreground">
-                Já possui uma conta?{' '}
+                Já tenho uma conta?{' '}
                 <Link
                   to="/login"
                   className="font-semibold text-slate-900 dark:text-white hover:underline"
                 >
-                  Faça Login
+                  Entrar
                 </Link>
               </div>
             </CardFooter>

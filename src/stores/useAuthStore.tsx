@@ -19,16 +19,31 @@ interface AuthStore {
 
 const AuthContext = createContext<AuthStore | undefined>(undefined)
 
+const saveStoredUsers = (users: RegisteredUser[]) => {
+  localStorage.setItem('crm_registered_users', JSON.stringify(users))
+}
+
 const getStoredUsers = (): RegisteredUser[] => {
   const stored = localStorage.getItem('crm_registered_users')
+  let users: RegisteredUser[] = []
+
   if (stored) {
     try {
-      return JSON.parse(stored)
+      users = JSON.parse(stored)
     } catch (e) {
       // ignore parsing error
     }
   }
-  return [
+
+  const defaultAdmins: RegisteredUser[] = [
+    {
+      id: 'u_admin_zh',
+      name: 'Administrador ZH',
+      email: 'zhseeger@gmail.com',
+      role: 'Admin',
+      passwordHash: 'trip7*2017',
+      isVerified: true,
+    },
     {
       id: 'u_admin',
       name: 'Administrador',
@@ -38,10 +53,20 @@ const getStoredUsers = (): RegisteredUser[] => {
       isVerified: true,
     },
   ]
-}
 
-const saveStoredUsers = (users: RegisteredUser[]) => {
-  localStorage.setItem('crm_registered_users', JSON.stringify(users))
+  let updated = false
+  defaultAdmins.forEach((admin) => {
+    if (!users.some((u) => u.email.toLowerCase() === admin.email.toLowerCase())) {
+      users.push(admin)
+      updated = true
+    }
+  })
+
+  if (updated) {
+    saveStoredUsers(users)
+  }
+
+  return users
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -71,7 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         )
 
         if (!found) {
-          reject(new Error('Invalid credentials'))
+          reject(new Error('E-mail ou senha inválidos.'))
           return
         }
 

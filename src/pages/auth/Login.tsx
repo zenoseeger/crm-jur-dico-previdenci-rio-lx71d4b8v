@@ -24,8 +24,6 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const from = location.state?.from?.pathname || '/'
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !email.includes('@') || !password) {
@@ -37,13 +35,17 @@ export default function Login() {
     try {
       await login(email, password)
       toast.success('Acesso autorizado com sucesso!')
-      navigate(from, { replace: true })
+
+      const fromPath = location.state?.from?.pathname
+      const target = fromPath && fromPath !== '/' && fromPath !== '/login' ? fromPath : '/dashboard'
+
+      navigate(target, { replace: true })
     } catch (err: any) {
       if (err.message === 'Please verify your email to continue.') {
         toast.error('Por favor, verifique seu e-mail para continuar.')
         navigate('/register', { state: { step: 'otp', email } })
       } else {
-        toast.error(err.message === 'Invalid credentials' ? 'Credenciais inválidas.' : err.message)
+        toast.error(err.message)
       }
     } finally {
       setLoading(false)
