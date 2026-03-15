@@ -83,12 +83,15 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     triggerCondition: 'contains',
     triggerKeyword: '',
   })
+
   const [whatsAppConfig, setWhatsAppConfig] = useState<WhatsAppConfig>({
     token: '',
     phoneId: '',
     accountId: '',
     connected: false,
     webhookUrl: '',
+    connectionType: 'official',
+    webSessionStatus: 'disconnected',
   })
 
   const [aiFlows, setAiFlows] = useState<AIFlow[]>([

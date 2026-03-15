@@ -105,12 +105,19 @@ export interface AIConfig {
   triggerKeyword: string
 }
 
+export type WhatsAppConnectionType = 'official' | 'web'
+export type WebSessionStatus = 'disconnected' | 'authenticating' | 'awaiting_scan' | 'connected'
+
 export interface WhatsAppConfig {
   token: string
   phoneId: string
   accountId: string
   connected: boolean
   webhookUrl: string
+  connectionType: WhatsAppConnectionType
+  webSessionStatus: WebSessionStatus
+  webProfileName?: string
+  webProfilePhone?: string
 }
 
 export interface AIFlowStepMedia {
