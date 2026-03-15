@@ -5,7 +5,8 @@ interface AuthStore {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, pass: string) => Promise<void>
+  requestLoginCode: (email: string) => Promise<void>
+  verifyLoginCode: (email: string, code: string) => Promise<void>
   register: (name: string, email: string, pass: string) => Promise<void>
   logout: () => void
 }
@@ -28,12 +29,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false)
   }, [])
 
-  const login = async (email: string, pass: string) => {
+  const requestLoginCode = async (email: string) => {
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
-        if (email && pass.length >= 6) {
+        if (email && email.includes('@')) {
+          resolve()
+        } else {
+          reject(new Error('E-mail inválido. Verifique o formato e tente novamente.'))
+        }
+      }, 800)
+    })
+  }
+
+  const verifyLoginCode = async (email: string, code: string) => {
+    return new Promise<void>((resolve, reject) => {
+      setTimeout(() => {
+        if (code === '123456') {
           const loggedInUser: User = {
-            id: 'u1',
+            id: `u${Date.now()}`,
             name: email.split('@')[0],
             email,
             role: 'Admin',
@@ -42,11 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem('crm_auth_user', JSON.stringify(loggedInUser))
           resolve()
         } else {
-          reject(
-            new Error(
-              'Credenciais inválidas. Use qualquer e-mail e senha com pelo menos 6 caracteres.',
-            ),
-          )
+          reject(new Error('Código de verificação inválido.'))
         }
       }, 800)
     })
@@ -81,7 +90,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        requestLoginCode,
+        verifyLoginCode,
+        register,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
