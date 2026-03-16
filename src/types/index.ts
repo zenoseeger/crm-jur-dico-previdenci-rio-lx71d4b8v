@@ -117,7 +117,12 @@ export interface AIConfig {
 }
 
 export type WhatsAppConnectionType = 'official' | 'web'
-export type WebSessionStatus = 'disconnected' | 'authenticating' | 'awaiting_scan' | 'connected'
+export type WebSessionStatus =
+  | 'disconnected'
+  | 'authenticating'
+  | 'awaiting_scan'
+  | 'connected'
+  | 'error'
 
 export interface WhatsAppConfig {
   token: string
