@@ -41,10 +41,19 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return
-    const [{ data: dbLeads }, { data: dbDocs }] = await Promise.all([
-      supabase.from('leads').select('*').eq('user_id', user.id),
-      supabase.from('documents').select('*').eq('user_id', user.id),
-    ])
+
+    const isAdmin = user.email === 'zhseeger@gmail.com'
+
+    let leadsQuery = supabase.from('leads').select('*')
+    let docsQuery = supabase.from('documents').select('*')
+
+    if (!isAdmin) {
+      leadsQuery = leadsQuery.eq('user_id', user.id)
+      docsQuery = docsQuery.eq('user_id', user.id)
+    }
+
+    const [{ data: dbLeads }, { data: dbDocs }] = await Promise.all([leadsQuery, docsQuery])
+
     if (dbLeads) {
       setLeads(
         dbLeads.map((l) => ({

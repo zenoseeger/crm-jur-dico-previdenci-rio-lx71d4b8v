@@ -19,10 +19,19 @@ export const ClientProvider = ({ children }: { children: ReactNode }) => {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return
-    const [{ data: dbClients }, { data: dbDocs }] = await Promise.all([
-      supabase.from('clients').select('*').eq('user_id', user.id),
-      supabase.from('documents').select('*').eq('user_id', user.id),
-    ])
+
+    const isAdmin = user.email === 'zhseeger@gmail.com'
+
+    let clientsQuery = supabase.from('clients').select('*')
+    let docsQuery = supabase.from('documents').select('*')
+
+    if (!isAdmin) {
+      clientsQuery = clientsQuery.eq('user_id', user.id)
+      docsQuery = docsQuery.eq('user_id', user.id)
+    }
+
+    const [{ data: dbClients }, { data: dbDocs }] = await Promise.all([clientsQuery, docsQuery])
+
     if (dbClients) {
       setClients(
         dbClients.map((c) => ({
