@@ -132,7 +132,7 @@ export function LeadDrawer() {
               value="qual"
               className="m-0 p-6 h-full focus-visible:outline-none animate-fade-in"
             >
-              <QualTab />
+              <QualTab lead={selectedLead} />
             </TabsContent>
             <TabsContent
               value="history"

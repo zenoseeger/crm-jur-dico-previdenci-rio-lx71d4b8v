@@ -391,31 +391,31 @@ export const Constants = {
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: clients
 //   Policy "authenticated_delete_clients" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
+//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //   Policy "authenticated_insert_clients" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (auth.uid() = user_id)
+//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //   Policy "authenticated_select_clients" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
+//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //   Policy "authenticated_update_clients" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
-//     WITH CHECK: (auth.uid() = user_id)
+//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 // Table: documents
 //   Policy "authenticated_delete_documents" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
+//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //   Policy "authenticated_insert_documents" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (auth.uid() = user_id)
+//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //   Policy "authenticated_select_documents" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
+//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //   Policy "authenticated_update_documents" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
-//     WITH CHECK: (auth.uid() = user_id)
+//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 // Table: leads
 //   Policy "authenticated_delete_leads" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
+//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //   Policy "authenticated_insert_leads" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (auth.uid() = user_id)
+//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //   Policy "authenticated_select_leads" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
+//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //   Policy "authenticated_update_leads" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
-//     WITH CHECK: (auth.uid() = user_id)
+//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))

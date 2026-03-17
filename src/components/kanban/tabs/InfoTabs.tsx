@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Lead } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +14,9 @@ import {
 } from '@/components/ui/command'
 import { useAdminStore } from '@/stores/useAdminStore'
 import useLeadStore from '@/stores/useLeadStore'
+import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 export function SummaryTab({ lead }: { lead: Lead }) {
   const { tags: adminTags } = useAdminStore()
@@ -119,7 +122,28 @@ export function SummaryTab({ lead }: { lead: Lead }) {
   )
 }
 
-export function QualTab() {
+export function QualTab({ lead }: { lead: Lead }) {
+  const { updateLeadNotes } = useLeadStore()
+  const [notes, setNotes] = useState(lead.notes || '')
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    setNotes(lead.notes || '')
+  }, [lead.id, lead.notes])
+
+  const handleSaveNotes = async () => {
+    setIsSaving(true)
+    try {
+      await updateLeadNotes(lead.id, notes)
+      toast.success('Notas salvas com sucesso!')
+    } catch (err) {
+      toast.error('Erro ao salvar notas. Tente novamente.')
+      console.error(err)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="bg-card border rounded-lg p-4 space-y-4 shadow-sm">
@@ -145,12 +169,17 @@ export function QualTab() {
       </div>
 
       <div className="space-y-2">
-        <h4 className="font-semibold text-sm">Anotações do Advogado</h4>
+        <h4 className="font-semibold text-sm">Notas do Lead</h4>
         <textarea
           className="w-full min-h-[150px] p-3 text-sm rounded-md border bg-muted/30 focus:bg-background focus:ring-2 ring-primary outline-none transition-all resize-none"
-          placeholder="Adicione notas privadas aqui..."
-          defaultValue="Cliente tem direito adquirido antes da reforma. Focar na averbação do período rural. Falta apenas o CNIS atualizado."
+          placeholder="Escreva aqui suas observações sobre este lead..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
         />
+        <Button onClick={handleSaveNotes} disabled={isSaving} size="sm">
+          {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Salvar Notas
+        </Button>
       </div>
     </div>
   )

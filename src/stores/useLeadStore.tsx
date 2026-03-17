@@ -23,6 +23,7 @@ interface LeadStore {
   markAITriggered: (leadId: string) => void
   addDocument: (leadId: string, doc: DocumentFile) => void
   removeDocument: (leadId: string, docId: string) => void
+  updateLeadNotes: (leadId: string, notes: string) => Promise<void>
 }
 
 const LeadContext = createContext<LeadStore | undefined>(undefined)
@@ -76,6 +77,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
           tasks: l.tasks || [],
           activeFlows: l.active_flows || [],
           lostReason: l.notes || '',
+          notes: l.notes || '',
           createdAt: l.created_at,
           documents:
             dbDocs
@@ -107,6 +109,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     if (updates.tasks !== undefined) map.tasks = updates.tasks
     if (updates.activeFlows !== undefined) map.active_flows = updates.activeFlows
     if (updates.lostReason !== undefined) map.notes = updates.lostReason
+    if (updates.notes !== undefined) map.notes = updates.notes
     if (updates.aiEnabled !== undefined) map.ai_enabled = updates.aiEnabled
     if (updates.aiTriggered !== undefined) map.ai_triggered = updates.aiTriggered
     if (updates.unread !== undefined) map.unread = updates.unread
@@ -215,6 +218,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
         ai_triggered: lead.aiTriggered,
         tasks: lead.tasks,
         active_flows: lead.activeFlows,
+        notes: lead.notes,
         user_id: user.id,
       })
     }
@@ -294,6 +298,12 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     await supabase.from('documents').delete().eq('id', docId)
   }
 
+  const updateLeadNotes = async (leadId: string, notes: string) => {
+    setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, notes } : l)))
+    const { error } = await supabase.from('leads').update({ notes }).eq('id', leadId)
+    if (error) throw error
+  }
+
   const value = {
     leads: leads.filter(
       (l) =>
@@ -315,6 +325,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     markAITriggered,
     addDocument,
     removeDocument,
+    updateLeadNotes,
     setSelectedLead: (l: Lead | null) => setSelectedLeadId(l ? l.id : null),
   }
 

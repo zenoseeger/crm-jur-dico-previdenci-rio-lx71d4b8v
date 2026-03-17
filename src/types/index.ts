@@ -64,6 +64,7 @@ export interface Lead {
   aiTriggered?: boolean
   lastMessageAt?: string
   lostReason?: string
+  notes?: string
   tasks?: Task[]
   activeFlows?: { flowId: string; currentStepOrder: number }[]
   documents?: DocumentFile[]
