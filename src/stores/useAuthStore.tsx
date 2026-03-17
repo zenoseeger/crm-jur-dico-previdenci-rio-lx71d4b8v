@@ -33,7 +33,9 @@ const getStoredUsers = (): RegisteredUser[] => {
   if (stored) {
     try {
       users = JSON.parse(stored)
-    } catch (e) {}
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
   }
 
   const defaultUsers: RegisteredUser[] = [

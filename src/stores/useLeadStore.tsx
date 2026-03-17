@@ -262,17 +262,15 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
       data: { user },
     } = await supabase.auth.getUser()
     if (user) {
-      await supabase
-        .from('documents')
-        .insert({
-          id: doc.id,
-          name: doc.name,
-          file_url: doc.url,
-          size: doc.size,
-          type: doc.type,
-          lead_id: leadId,
-          user_id: user.id,
-        })
+      await supabase.from('documents').insert({
+        id: doc.id,
+        name: doc.name,
+        file_url: doc.url,
+        size: doc.size,
+        type: doc.type,
+        lead_id: leadId,
+        user_id: user.id,
+      })
     }
   }
 
