@@ -83,7 +83,7 @@ export interface DocumentReq {
   status: 'ok' | 'pending' | 'rejected'
 }
 
-export type UserRole = 'Admin' | 'SDR' | 'Closer' | 'Advogado'
+export type UserRole = 'Admin' | 'Usuário' | 'SDR' | 'Closer' | 'Advogado'
 
 export interface User {
   id: string

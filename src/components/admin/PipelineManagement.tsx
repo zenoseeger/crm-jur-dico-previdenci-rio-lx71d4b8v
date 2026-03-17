@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAdminStore } from '@/stores/useAdminStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 import useLeadStore from '@/stores/useLeadStore'
 import { PipelineStage, Pipeline } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -40,8 +41,6 @@ export function PipelineManagement() {
     addPipeline,
     updatePipeline,
     deletePipeline,
-    currentUser,
-    users,
     pipelineStages,
     addPipelineStage,
     updatePipelineStage,
@@ -49,6 +48,8 @@ export function PipelineManagement() {
     reorderPipelineStages,
     tags,
   } = useAdminStore()
+
+  const { users, user: currentUser } = useAuthStore()
   const { updateLeadStageNames, leads } = useLeadStore()
 
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('p1')

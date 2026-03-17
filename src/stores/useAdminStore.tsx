@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react'
 import {
-  User,
   TagDef,
   AIConfig,
   WhatsAppConfig,
@@ -12,8 +11,6 @@ import {
 import { toast } from 'sonner'
 
 interface AdminStore {
-  currentUser: User | null
-  users: User[]
   tags: TagDef[]
   benefitTypes: BenefitType[]
   aiConfig: AIConfig
@@ -21,9 +18,6 @@ interface AdminStore {
   pipelines: Pipeline[]
   pipelineStages: PipelineStage[]
   aiFlows: AIFlow[]
-  addUser: (user: Omit<User, 'id'>) => void
-  updateUser: (id: string, user: Partial<User>) => void
-  deleteUser: (id: string) => void
   addTag: (tag: Omit<TagDef, 'id'>) => void
   updateTag: (id: string, tag: Partial<TagDef>) => void
   deleteTag: (id: string) => void
@@ -46,14 +40,8 @@ interface AdminStore {
 
 const AdminContext = createContext<AdminStore | undefined>(undefined)
 
-const initialUsers: User[] = [
-  { id: 'u1', name: 'Admin Silva', email: 'admin@exemplo.com', role: 'Admin' },
-  { id: 'u2', name: 'SDR João', email: 'joao@exemplo.com', role: 'SDR' },
-  { id: 'u3', name: 'Closer Paula', email: 'paula@exemplo.com', role: 'Closer' },
-]
-
 const initialPipelines: Pipeline[] = [
-  { id: 'p1', name: 'Aposentadoria (Padrão)', userIds: ['u1', 'u2', 'u3'] },
+  { id: 'p1', name: 'Aposentadoria (Padrão)', userIds: ['u_admin', 'u2', 'u3'] },
 ]
 
 const initialTags: TagDef[] = [
@@ -89,12 +77,11 @@ const initialPipelineStages: PipelineStage[] = [
 ]
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
-  const [users, setUsers] = useState<User[]>(initialUsers)
   const [pipelines, setPipelines] = useState<Pipeline[]>(initialPipelines)
   const [tags, setTags] = useState<TagDef[]>(initialTags)
   const [benefitTypes, setBenefitTypes] = useState<BenefitType[]>(initialBenefitTypes)
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(initialPipelineStages)
-  const [currentUser] = useState<User | null>(initialUsers[0])
+
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     apiKey: '',
     prompt: '',
@@ -142,8 +129,6 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   ])
 
   const value = {
-    currentUser,
-    users,
     pipelines,
     tags,
     benefitTypes,
@@ -151,10 +136,6 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     whatsAppConfig,
     pipelineStages,
     aiFlows,
-    addUser: (u: Omit<User, 'id'>) => setUsers((p) => [...p, { ...u, id: `u${Date.now()}` }]),
-    updateUser: (id: string, u: Partial<User>) =>
-      setUsers((p) => p.map((x) => (x.id === id ? { ...x, ...u } : x))),
-    deleteUser: (id: string) => setUsers((p) => p.filter((x) => x.id !== id)),
     addTag: (t: Omit<TagDef, 'id'>) => setTags((p) => [...p, { ...t, id: `t${Date.now()}` }]),
     updateTag: (id: string, t: Partial<TagDef>) =>
       setTags((p) => p.map((x) => (x.id === id ? { ...x, ...t } : x))),

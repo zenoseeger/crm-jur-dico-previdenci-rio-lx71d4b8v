@@ -1,17 +1,22 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
 import { User } from '@/types'
+import { toast } from 'sonner'
 
-interface RegisteredUser extends User {
+export interface RegisteredUser extends User {
   passwordHash: string
+  createdAt?: string
 }
 
 interface AuthStore {
   user: User | null
+  users: RegisteredUser[]
   isAuthenticated: boolean
   isLoading: boolean
   login: (email: string, pass: string) => Promise<void>
   register: (name: string, email: string, pass: string) => Promise<void>
   logout: () => void
+  adminUpdateUser: (id: string, data: Partial<RegisteredUser>) => void
+  adminDeleteUser: (id: string) => void
 }
 
 const AuthContext = createContext<AuthStore | undefined>(undefined)
@@ -32,13 +37,14 @@ const getStoredUsers = (): RegisteredUser[] => {
     }
   }
 
-  const defaultAdmins: RegisteredUser[] = [
+  const defaultUsers: RegisteredUser[] = [
     {
       id: 'u_admin_zh',
       name: 'Administrador ZH',
       email: 'zhseeger@gmail.com',
       role: 'Admin',
       passwordHash: 'trip7*2017',
+      createdAt: new Date().toISOString(),
     },
     {
       id: 'u_admin',
@@ -46,15 +52,41 @@ const getStoredUsers = (): RegisteredUser[] => {
       email: 'admin@escritorio.com',
       role: 'Admin',
       passwordHash: 'Admin123',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'u2',
+      name: 'SDR João',
+      email: 'joao@exemplo.com',
+      role: 'SDR',
+      passwordHash: 'senha123',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'u3',
+      name: 'Closer Paula',
+      email: 'paula@exemplo.com',
+      role: 'Closer',
+      passwordHash: 'senha123',
+      createdAt: new Date().toISOString(),
     },
   ]
 
   let updated = false
-  defaultAdmins.forEach((admin) => {
-    if (!users.some((u) => u.email.toLowerCase() === admin.email.toLowerCase())) {
-      users.push(admin)
+  defaultUsers.forEach((defUser) => {
+    if (!users.some((u) => u.email.toLowerCase() === defUser.email.toLowerCase())) {
+      users.push(defUser)
       updated = true
     }
+  })
+
+  // Ensure all users have a createdAt timestamp
+  users = users.map((u) => {
+    if (!u.createdAt) {
+      updated = true
+      return { ...u, createdAt: new Date().toISOString() }
+    }
+    return u
   })
 
   if (updated) {
@@ -66,6 +98,7 @@ const getStoredUsers = (): RegisteredUser[] => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
+  const [users, setUsers] = useState<RegisteredUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -77,8 +110,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem('crm_auth_user')
       }
     }
-    const users = getStoredUsers()
-    saveStoredUsers(users)
+    const loadedUsers = getStoredUsers()
+    setUsers(loadedUsers)
     setIsLoading(false)
   }, [])
 
@@ -88,26 +121,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const cleanEmail = email.trim().toLowerCase()
 
         // Administrative Login Override
-        if (cleanEmail === 'zhseeger@gmail.com') {
-          if (pass === 'trip7*2017') {
-            const adminUser: User = {
-              id: 'u_admin_zh',
-              name: 'Administrador ZH',
-              email: 'zhseeger@gmail.com',
-              role: 'Admin',
-            }
-            setUser(adminUser)
-            localStorage.setItem('crm_auth_user', JSON.stringify(adminUser))
-            resolve()
-            return
-          } else {
-            reject(new Error('Credenciais inválidas'))
-            return
+        if (cleanEmail === 'zhseeger@gmail.com' && pass === 'trip7*2017') {
+          const adminUser: User = {
+            id: 'u_admin_zh',
+            name: 'Administrador ZH',
+            email: 'zhseeger@gmail.com',
+            role: 'Admin',
           }
+          setUser(adminUser)
+          localStorage.setItem('crm_auth_user', JSON.stringify(adminUser))
+          resolve()
+          return
         }
 
-        const users = getStoredUsers()
-        const found = users.find(
+        const allUsers = getStoredUsers()
+        const found = allUsers.find(
           (u) => u.email.toLowerCase() === cleanEmail && u.passwordHash === pass,
         )
 
@@ -132,8 +160,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (name: string, email: string, pass: string) => {
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
-        const users = getStoredUsers()
-        if (users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
+        const allUsers = getStoredUsers()
+        if (allUsers.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
           reject(new Error('Email already registered.'))
           return
         }
@@ -142,12 +170,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           id: `u${Date.now()}`,
           name,
           email: email.trim(),
-          role: 'SDR', // Default to restricted user to test RBAC
+          role: 'Usuário',
           passwordHash: pass,
+          createdAt: new Date().toISOString(),
         }
 
-        users.push(newUser)
-        saveStoredUsers(users)
+        allUsers.push(newUser)
+        saveStoredUsers(allUsers)
+        setUsers(allUsers)
 
         const loggedInUser: User = {
           id: newUser.id,
@@ -168,15 +198,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('crm_auth_user')
   }
 
+  const adminUpdateUser = (id: string, data: Partial<RegisteredUser>) => {
+    setUsers((prev) => {
+      const next = prev.map((u) => (u.id === id ? { ...u, ...data } : u))
+      saveStoredUsers(next)
+      return next
+    })
+    toast.success('Usuário atualizado com sucesso!')
+  }
+
+  const adminDeleteUser = (id: string) => {
+    setUsers((prev) => {
+      const next = prev.filter((u) => u.id !== id)
+      saveStoredUsers(next)
+      return next
+    })
+    toast.success('Usuário removido.')
+  }
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        users,
         isAuthenticated: !!user,
         isLoading,
         login,
         register,
         logout,
+        adminUpdateUser,
+        adminDeleteUser,
       }}
     >
       {children}
