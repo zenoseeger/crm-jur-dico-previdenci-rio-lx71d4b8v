@@ -1,10 +1,11 @@
-import { Bell, Search, UserCircle, User as UserIcon, LogOut } from 'lucide-react'
+import { Bell, Search, UserCircle, User as UserIcon, LogOut, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import useLeadStore from '@/stores/useLeadStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { LogoutConfirm } from '@/components/auth/LogoutConfirm'
+import { NewLeadDialog } from '@/components/kanban/NewLeadDialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +34,14 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <NewLeadDialog>
+          <Button size="sm" className="h-9">
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Novo Lead</span>
+          </Button>
+        </NewLeadDialog>
+
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5 text-muted-foreground" />
           <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
