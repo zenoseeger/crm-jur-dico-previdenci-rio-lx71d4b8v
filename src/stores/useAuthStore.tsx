@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
 import { User } from '@/types'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase/client'
 
 export interface RegisteredUser extends User {
-  passwordHash: string
+  passwordHash?: string
   createdAt?: string
 }
 
@@ -32,9 +33,7 @@ const getStoredUsers = (): RegisteredUser[] => {
   if (stored) {
     try {
       users = JSON.parse(stored)
-    } catch (e) {
-      // ignore parsing error
-    }
+    } catch (e) {}
   }
 
   const defaultUsers: RegisteredUser[] = [
@@ -43,7 +42,6 @@ const getStoredUsers = (): RegisteredUser[] => {
       name: 'Administrador ZH',
       email: 'zhseeger@gmail.com',
       role: 'Admin',
-      passwordHash: 'trip7*2017',
       createdAt: new Date().toISOString(),
     },
     {
@@ -51,7 +49,6 @@ const getStoredUsers = (): RegisteredUser[] => {
       name: 'Administrador',
       email: 'admin@escritorio.com',
       role: 'Admin',
-      passwordHash: 'Admin123',
       createdAt: new Date().toISOString(),
     },
     {
@@ -59,7 +56,6 @@ const getStoredUsers = (): RegisteredUser[] => {
       name: 'SDR João',
       email: 'joao@exemplo.com',
       role: 'SDR',
-      passwordHash: 'senha123',
       createdAt: new Date().toISOString(),
     },
     {
@@ -67,7 +63,6 @@ const getStoredUsers = (): RegisteredUser[] => {
       name: 'Closer Paula',
       email: 'paula@exemplo.com',
       role: 'Closer',
-      passwordHash: 'senha123',
       createdAt: new Date().toISOString(),
     },
   ]
@@ -80,7 +75,6 @@ const getStoredUsers = (): RegisteredUser[] => {
     }
   })
 
-  // Ensure all users have a createdAt timestamp
   users = users.map((u) => {
     if (!u.createdAt) {
       updated = true
@@ -89,10 +83,7 @@ const getStoredUsers = (): RegisteredUser[] => {
     return u
   })
 
-  if (updated) {
-    saveStoredUsers(users)
-  }
-
+  if (updated) saveStoredUsers(users)
   return users
 }
 
@@ -102,100 +93,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('crm_auth_user')
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser))
-      } catch (e) {
-        localStorage.removeItem('crm_auth_user')
+    setUsers(getStoredUsers())
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          role: 'Admin',
+        })
       }
-    }
-    const loadedUsers = getStoredUsers()
-    setUsers(loadedUsers)
-    setIsLoading(false)
+      setIsLoading(false)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          role: 'Admin',
+        })
+      } else {
+        setUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const login = async (email: string, pass: string) => {
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        const cleanEmail = email.trim().toLowerCase()
-
-        // Administrative Login Override
-        if (cleanEmail === 'zhseeger@gmail.com' && pass === 'trip7*2017') {
-          const adminUser: User = {
-            id: 'u_admin_zh',
-            name: 'Administrador ZH',
-            email: 'zhseeger@gmail.com',
-            role: 'Admin',
-          }
-          setUser(adminUser)
-          localStorage.setItem('crm_auth_user', JSON.stringify(adminUser))
-          resolve()
-          return
-        }
-
-        const allUsers = getStoredUsers()
-        const found = allUsers.find(
-          (u) => u.email.toLowerCase() === cleanEmail && u.passwordHash === pass,
-        )
-
-        if (!found) {
-          reject(new Error('E-mail ou senha inválidos.'))
-          return
-        }
-
-        const loggedInUser: User = {
-          id: found.id,
-          name: found.name,
-          email: found.email,
-          role: found.role,
-        }
-        setUser(loggedInUser)
-        localStorage.setItem('crm_auth_user', JSON.stringify(loggedInUser))
-        resolve()
-      }, 800)
-    })
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pass })
+    if (error) throw new Error('E-mail ou senha inválidos.')
   }
 
   const register = async (name: string, email: string, pass: string) => {
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        const allUsers = getStoredUsers()
-        if (allUsers.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
-          reject(new Error('Email already registered.'))
-          return
-        }
-
-        const newUser: RegisteredUser = {
-          id: `u${Date.now()}`,
-          name,
-          email: email.trim(),
-          role: 'Usuário',
-          passwordHash: pass,
-          createdAt: new Date().toISOString(),
-        }
-
-        allUsers.push(newUser)
-        saveStoredUsers(allUsers)
-        setUsers(allUsers)
-
-        const loggedInUser: User = {
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-        }
-        setUser(loggedInUser)
-        localStorage.setItem('crm_auth_user', JSON.stringify(loggedInUser))
-
-        resolve()
-      }, 800)
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: pass,
+      options: { data: { name } },
     })
+    if (error) throw new Error(error.message)
   }
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut()
     setUser(null)
-    localStorage.removeItem('crm_auth_user')
   }
 
   const adminUpdateUser = (id: string, data: Partial<RegisteredUser>) => {

@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
 import { Lead, Stage, Task, TaskTemplate, DocumentFile } from '@/types'
-import { MOCK_LEADS } from '@/lib/mockData'
 import { processTagsForFlows, processTaskCompletionForFlows } from '@/lib/flowLogic'
 import { useAdminStore } from '@/stores/useAdminStore'
+import { supabase } from '@/lib/supabase/client'
 
 interface LeadStore {
   leads: Lead[]
@@ -28,13 +28,81 @@ interface LeadStore {
 const LeadContext = createContext<LeadStore | undefined>(undefined)
 
 export const LeadProvider = ({ children }: { children: ReactNode }) => {
-  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS)
+  const [leads, setLeads] = useState<Lead[]>([])
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPipelineId, setCurrentPipelineId] = useState<string | null>(null)
   const { aiFlows } = useAdminStore()
 
   const selectedLead = leads.find((l) => l.id === selectedLeadId) || null
+
+  const fetchLeads = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+    const [{ data: dbLeads }, { data: dbDocs }] = await Promise.all([
+      supabase.from('leads').select('*').eq('user_id', user.id),
+      supabase.from('documents').select('*').eq('user_id', user.id),
+    ])
+    if (dbLeads) {
+      setLeads(
+        dbLeads.map((l) => ({
+          id: l.id,
+          name: l.name,
+          phone: l.phone,
+          email: l.email || '',
+          pipelineId: l.pipeline_id || 'p1',
+          stage: l.stage,
+          heat: (l.heat as any) || 'Morno',
+          tags: l.tags || [],
+          timeInStage: l.time_in_stage || '0m',
+          unread: l.unread,
+          benefitType: l.benefit_type || '',
+          city: l.city || '',
+          assignee: l.assignee || '',
+          aiScore: l.ai_score || 0,
+          aiEnabled: l.ai_enabled,
+          aiTriggered: l.ai_triggered,
+          tasks: l.tasks || [],
+          activeFlows: l.active_flows || [],
+          lostReason: l.notes || '',
+          createdAt: l.created_at,
+          documents:
+            dbDocs
+              ?.filter((d) => d.lead_id === l.id)
+              .map((d) => ({
+                id: d.id,
+                name: d.name,
+                url: d.file_url,
+                size: d.size || 0,
+                type: d.type || '',
+                uploadDate: d.created_at,
+                leadId: d.lead_id,
+              })) || [],
+        })),
+      )
+    }
+  }
+
+  useEffect(() => {
+    const sub = supabase.auth.onAuthStateChange((e, s) => (s?.user ? fetchLeads() : setLeads([])))
+    fetchLeads()
+    return () => sub.data.subscription.unsubscribe()
+  }, [])
+
+  const updateDb = async (id: string, updates: Partial<Lead>) => {
+    const map: any = {}
+    if (updates.stage !== undefined) map.stage = updates.stage
+    if (updates.tags !== undefined) map.tags = updates.tags
+    if (updates.tasks !== undefined) map.tasks = updates.tasks
+    if (updates.activeFlows !== undefined) map.active_flows = updates.activeFlows
+    if (updates.lostReason !== undefined) map.notes = updates.lostReason
+    if (updates.aiEnabled !== undefined) map.ai_enabled = updates.aiEnabled
+    if (updates.aiTriggered !== undefined) map.ai_triggered = updates.aiTriggered
+    if (updates.unread !== undefined) map.unread = updates.unread
+    if (Object.keys(map).length > 0) await supabase.from('leads').update(map).eq('id', id)
+  }
 
   const moveLead = (
     leadId: string,
@@ -44,94 +112,171 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     autoTasks: TaskTemplate[] = [],
   ) => {
     setLeads((prev) =>
-      prev.map((lead) => {
-        if (lead.id !== leadId) return lead
-        const newTags = Array.from(new Set([...lead.tags, ...autoTags]))
-        const addedTasks = autoTasks.map((t) => ({
-          id: `task_${Date.now()}_${Math.random()}`,
+      prev.map((l) => {
+        if (l.id !== leadId) return l
+        const tags = Array.from(new Set([...l.tags, ...autoTags]))
+        const added = autoTasks.map((t) => ({
+          id: crypto.randomUUID(),
           title: t.title,
           description: t.description,
           completed: false,
           createdAt: new Date().toISOString(),
-          dueDate:
-            t.dueInDays !== undefined
-              ? new Date(Date.now() + t.dueInDays * 86400000).toISOString()
-              : undefined,
         }))
         const { tasks, activeFlows } = processTagsForFlows(
-          lead,
+          l,
           autoTags,
-          [...(lead.tasks || []), ...addedTasks],
-          lead.activeFlows || [],
+          [...(l.tasks || []), ...added],
+          l.activeFlows || [],
           aiFlows,
         )
-        return {
-          ...lead,
-          stage: to,
-          timeInStage: '0m',
-          lostReason: r || lead.lostReason,
-          tags: newTags,
-          tasks,
-          activeFlows,
-        }
+        const nl = { ...l, stage: to, lostReason: r || l.lostReason, tags, tasks, activeFlows }
+        updateDb(leadId, nl)
+        return nl
       }),
     )
   }
 
   const toggleTask = (leadId: string, taskId: string) => {
     setLeads((prev) =>
-      prev.map((lead) => {
-        if (lead.id !== leadId) return lead
+      prev.map((l) => {
+        if (l.id !== leadId) return l
         const { tasks, activeFlows } = processTaskCompletionForFlows(
           taskId,
-          lead.tasks || [],
-          lead.activeFlows || [],
+          l.tasks || [],
+          l.activeFlows || [],
           aiFlows,
         )
-        return { ...lead, tasks, activeFlows }
+        const nl = { ...l, tasks, activeFlows }
+        updateDb(leadId, nl)
+        return nl
       }),
     )
   }
 
   const addTagToLead = (leadId: string, tag: string) => {
     setLeads((prev) =>
-      prev.map((lead) => {
-        if (lead.id !== leadId || lead.tags.includes(tag)) return lead
+      prev.map((l) => {
+        if (l.id !== leadId || l.tags.includes(tag)) return l
         const { tasks, activeFlows } = processTagsForFlows(
-          lead,
+          l,
           [tag],
-          lead.tasks || [],
-          lead.activeFlows || [],
+          l.tasks || [],
+          l.activeFlows || [],
           aiFlows,
         )
-        return { ...lead, tags: [...lead.tags, tag], tasks, activeFlows }
+        const nl = { ...l, tags: [...l.tags, tag], tasks, activeFlows }
+        updateDb(leadId, nl)
+        return nl
       }),
     )
   }
 
   const addTask = (leadId: string, task: Task) =>
     setLeads((p) =>
-      p.map((l) => (l.id === leadId ? { ...l, tasks: [task, ...(l.tasks || [])] } : l)),
+      p.map((l) => {
+        if (l.id !== leadId) return l
+        const nl = { ...l, tasks: [task, ...(l.tasks || [])] }
+        updateDb(leadId, nl)
+        return nl
+      }),
     )
-  const addLead = (lead: Lead) => setLeads((p) => [lead, ...p])
-  const markAsRead = (id: string) =>
-    setLeads((p) => p.map((l) => (l.id === id ? { ...l, unread: false } : l)))
-  const updateLeadStageNames = (pipelineId: string, o: string, n: string) =>
-    setLeads((p) =>
-      p.map((l) => (l.pipelineId === pipelineId && l.stage === o ? { ...l, stage: n } : l)),
-    )
-  const toggleLeadAI = (leadId: string, enabled: boolean) =>
-    setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, aiEnabled: enabled } : l)))
-  const markAITriggered = (leadId: string) =>
-    setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, aiTriggered: true } : l)))
 
-  const addDocument = (leadId: string, doc: DocumentFile) => {
+  const addLead = async (lead: Lead) => {
+    setLeads((p) => [lead, ...p])
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('leads').insert({
+        id: lead.id,
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email,
+        pipeline_id: lead.pipelineId,
+        stage: lead.stage,
+        heat: lead.heat,
+        tags: lead.tags,
+        time_in_stage: lead.timeInStage,
+        unread: lead.unread,
+        benefit_type: lead.benefitType,
+        city: lead.city,
+        assignee: lead.assignee,
+        ai_score: lead.aiScore,
+        ai_enabled: lead.aiEnabled,
+        ai_triggered: lead.aiTriggered,
+        tasks: lead.tasks,
+        active_flows: lead.activeFlows,
+        user_id: user.id,
+      })
+    }
+  }
+
+  const markAsRead = (id: string) =>
     setLeads((p) =>
-      p.map((l) => (l.id === leadId ? { ...l, documents: [doc, ...(l.documents || [])] } : l)),
+      p.map((l) => {
+        if (l.id !== id) return l
+        const nl = { ...l, unread: false }
+        updateDb(id, nl)
+        return nl
+      }),
+    )
+
+  const updateLeadStageNames = (pipelineId: string, o: string, n: string) => {
+    setLeads((p) =>
+      p.map((l) => {
+        if (l.pipelineId === pipelineId && l.stage === o) {
+          const nl = { ...l, stage: n }
+          updateDb(l.id, nl)
+          return nl
+        }
+        return l
+      }),
     )
   }
 
-  const removeDocument = (leadId: string, docId: string) => {
+  const toggleLeadAI = (leadId: string, enabled: boolean) =>
+    setLeads((p) =>
+      p.map((l) => {
+        if (l.id !== leadId) return l
+        const nl = { ...l, aiEnabled: enabled }
+        updateDb(leadId, nl)
+        return nl
+      }),
+    )
+
+  const markAITriggered = (leadId: string) =>
+    setLeads((p) =>
+      p.map((l) => {
+        if (l.id !== leadId) return l
+        const nl = { ...l, aiTriggered: true }
+        updateDb(leadId, nl)
+        return nl
+      }),
+    )
+
+  const addDocument = async (leadId: string, doc: DocumentFile) => {
+    setLeads((p) =>
+      p.map((l) => (l.id === leadId ? { ...l, documents: [doc, ...(l.documents || [])] } : l)),
+    )
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      await supabase
+        .from('documents')
+        .insert({
+          id: doc.id,
+          name: doc.name,
+          file_url: doc.url,
+          size: doc.size,
+          type: doc.type,
+          lead_id: leadId,
+          user_id: user.id,
+        })
+    }
+  }
+
+  const removeDocument = async (leadId: string, docId: string) => {
     setLeads((p) =>
       p.map((l) =>
         l.id === leadId
@@ -139,6 +284,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
           : l,
       ),
     )
+    await supabase.from('documents').delete().eq('id', docId)
   }
 
   const value = {

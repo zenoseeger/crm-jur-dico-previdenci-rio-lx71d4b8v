@@ -70,7 +70,7 @@ export default function Clients() {
     cpf: '',
     email: '',
     phone: '',
-    status: 'Lead',
+    status: 'Lead Novo',
   })
 
   const handleSave = () => {
@@ -80,7 +80,7 @@ export default function Clients() {
     }
 
     const newClient: Client = {
-      id: `c_${Date.now()}`,
+      id: crypto.randomUUID(),
       ...formData,
       date: new Date().toLocaleDateString('pt-BR'),
       documents: [],
@@ -88,7 +88,7 @@ export default function Clients() {
 
     addClient(newClient)
     setIsDialogOpen(false)
-    setFormData({ name: '', cpf: '', email: '', phone: '', status: 'Lead' })
+    setFormData({ name: '', cpf: '', email: '', phone: '', status: 'Lead Novo' })
     toast.success('Cliente cadastrado com sucesso!')
   }
 
@@ -262,7 +262,6 @@ export default function Clients() {
           <DialogHeader>
             <DialogTitle className="text-xl">{selectedClient?.name}</DialogTitle>
           </DialogHeader>
-
           <Tabs defaultValue="perfil" className="w-full mt-4">
             <TabsList className="w-full grid grid-cols-2">
               <TabsTrigger value="perfil">Perfil do Cliente</TabsTrigger>
@@ -275,7 +274,6 @@ export default function Clients() {
                 )}
               </TabsTrigger>
             </TabsList>
-
             <TabsContent value="perfil" className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4 border p-4 rounded-lg bg-card">
                 <div>
@@ -310,7 +308,6 @@ export default function Clients() {
                 )}
               </div>
             </TabsContent>
-
             <TabsContent value="documentos" className="py-4">
               {!selectedClient?.documents || selectedClient.documents.length === 0 ? (
                 <div className="text-center py-12 border border-dashed rounded-lg bg-muted/20">

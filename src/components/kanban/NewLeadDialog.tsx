@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useClientStore } from '@/stores/useClientStore'
 import { toast } from 'sonner'
 import { Lead, DocumentFile } from '@/types'
+import { supabase } from '@/lib/supabase/client'
 
 interface NewLeadDialogProps {
   children: React.ReactNode
@@ -78,14 +79,22 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
     if (e.target.files) setFiles((prev) => [...prev, ...Array.from(e.target.files!)])
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || phone.replace(/\D/g, '').length < 10) return
     const pipelineId = currentPipelineId || pipelines?.[0]?.id
     const assignee = (users || []).find((u) => u.id === assigneeId)?.name || ''
-    const leadId = `l_${Date.now()}`
+    const leadId = crypto.randomUUID()
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      toast.error('Usuário não autenticado.')
+      return
+    }
 
     const uploadedDocs: DocumentFile[] = files.map((f) => ({
-      id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      id: crypto.randomUUID(),
       leadId,
       name: f.name,
       size: f.size,
@@ -112,23 +121,36 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
       documents: uploadedDocs,
     }
 
-    addLead(newLead)
+    await addLead(newLead)
+
+    for (const doc of uploadedDocs) {
+      await supabase.from('documents').insert({
+        id: doc.id,
+        name: doc.name,
+        file_url: doc.url,
+        size: doc.size,
+        type: doc.type,
+        lead_id: leadId,
+        user_id: user.id,
+      })
+    }
 
     if (saveAsClient) {
-      addClient({
-        id: `c_${Date.now()}`,
+      const clientId = crypto.randomUUID()
+      await addClient({
+        id: clientId,
         name: newLead.name,
         phone: newLead.phone,
         status: 'Lead Novo',
         date: new Date().toLocaleDateString('pt-BR'),
         city: newLead.city,
         benefitType: newLead.benefitType,
-        documents: uploadedDocs.map((d) => ({
-          ...d,
-          leadId: undefined,
-          clientId: `c_${Date.now()}`,
-        })),
+        documents: uploadedDocs.map((d) => ({ ...d, leadId: undefined, clientId })),
       })
+
+      for (const doc of uploadedDocs) {
+        await supabase.from('documents').update({ client_id: clientId }).eq('id', doc.id)
+      }
       toast.success('Lead e Cliente cadastrados com sucesso!')
     } else {
       toast.success('Lead cadastrado com sucesso!')
@@ -150,7 +172,6 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
             Cadastre um novo lead manualmente e anexe documentação.
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -175,7 +196,6 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
               />
             </div>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>
@@ -203,7 +223,6 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
               />
             </div>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Etapa do Pipeline</Label>
@@ -236,7 +255,6 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
               </Select>
             </div>
           </div>
-
           <div className="space-y-2 border p-4 rounded-md bg-muted/20">
             <div className="flex items-center justify-between">
               <Label>Documentação</Label>
@@ -281,7 +299,6 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
               </div>
             )}
           </div>
-
           <div className="flex items-center space-x-2 pt-2 border-t">
             <Switch id="save-client" checked={saveAsClient} onCheckedChange={setSaveAsClient} />
             <Label htmlFor="save-client" className="cursor-pointer">
@@ -289,7 +306,6 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
             </Label>
           </div>
         </div>
-
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancelar

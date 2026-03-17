@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
 import { Client } from '@/types'
+import { supabase } from '@/lib/supabase/client'
 
 interface ClientStore {
   clients: Client[]
@@ -10,48 +11,92 @@ interface ClientStore {
 
 const ClientContext = createContext<ClientStore | undefined>(undefined)
 
-const INITIAL_CLIENTS: Client[] = [
-  {
-    id: '1',
-    name: 'João Silva',
-    cpf: '123.456.789-00',
-    email: 'joao@email.com',
-    phone: '(11) 98765-4321',
-    status: 'Cliente Ativo',
-    date: '14/03/2026',
-    documents: [],
-  },
-  {
-    id: '2',
-    name: 'Maria Souza',
-    cpf: '987.654.321-11',
-    email: 'maria@email.com',
-    phone: '(21) 99999-8888',
-    status: 'Lead Quente',
-    date: '12/03/2026',
-    documents: [],
-  },
-  {
-    id: '3',
-    name: 'Carlos Oliveira',
-    cpf: '456.123.789-22',
-    email: 'carlos@email.com',
-    phone: '(31) 97777-6666',
-    status: 'Inativo',
-    date: '01/03/2026',
-    documents: [],
-  },
-]
-
 export const ClientProvider = ({ children }: { children: ReactNode }) => {
-  const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS)
+  const [clients, setClients] = useState<Client[]>([])
 
-  const addClient = (client: Client) => setClients((prev) => [client, ...prev])
+  const fetchClients = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+    const [{ data: dbClients }, { data: dbDocs }] = await Promise.all([
+      supabase.from('clients').select('*').eq('user_id', user.id),
+      supabase.from('documents').select('*').eq('user_id', user.id),
+    ])
+    if (dbClients) {
+      setClients(
+        dbClients.map((c) => ({
+          id: c.id,
+          name: c.name,
+          cpf: c.cpf || '',
+          email: c.email || '',
+          phone: c.phone || '',
+          status: c.status || 'Cliente Ativo',
+          date: new Date(c.created_at).toLocaleDateString('pt-BR'),
+          city: c.city || '',
+          benefitType: c.benefit_type || '',
+          documents:
+            dbDocs
+              ?.filter((d) => d.client_id === c.id)
+              .map((d) => ({
+                id: d.id,
+                name: d.name,
+                url: d.file_url,
+                size: d.size || 0,
+                type: d.type || '',
+                uploadDate: d.created_at,
+                clientId: d.client_id,
+              })) || [],
+        })),
+      )
+    }
+  }
 
-  const updateClient = (id: string, data: Partial<Client>) =>
-    setClients((prev) => prev.map((c) => (c.id === id ? { ...c, ...data } : c)))
+  useEffect(() => {
+    const sub = supabase.auth.onAuthStateChange((e, s) =>
+      s?.user ? fetchClients() : setClients([]),
+    )
+    fetchClients()
+    return () => sub.data.subscription.unsubscribe()
+  }, [])
 
-  const deleteClient = (id: string) => setClients((prev) => prev.filter((c) => c.id !== id))
+  const addClient = async (client: Client) => {
+    setClients((p) => [client, ...p])
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('clients').insert({
+        id: client.id,
+        name: client.name,
+        cpf: client.cpf,
+        email: client.email,
+        phone: client.phone,
+        status: client.status,
+        city: client.city,
+        benefit_type: client.benefitType,
+        user_id: user.id,
+      })
+    }
+  }
+
+  const updateClient = async (id: string, data: Partial<Client>) => {
+    setClients((p) => p.map((c) => (c.id === id ? { ...c, ...data } : c)))
+    const map: any = {}
+    if (data.name) map.name = data.name
+    if (data.cpf) map.cpf = data.cpf
+    if (data.phone) map.phone = data.phone
+    if (data.email) map.email = data.email
+    if (data.status) map.status = data.status
+    if (data.city) map.city = data.city
+    if (data.benefitType) map.benefit_type = data.benefitType
+    if (Object.keys(map).length > 0) await supabase.from('clients').update(map).eq('id', id)
+  }
+
+  const deleteClient = async (id: string) => {
+    setClients((p) => p.filter((c) => c.id !== id))
+    await supabase.from('clients').delete().eq('id', id)
+  }
 
   return (
     <ClientContext.Provider value={{ clients, addClient, updateClient, deleteClient }}>

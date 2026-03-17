@@ -54,7 +54,7 @@ export function DocsTab({ lead }: { lead: Lead }) {
 
     Array.from(files).forEach((file) => {
       const doc: DocumentFile = {
-        id: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        id: crypto.randomUUID(),
         leadId: lead.id,
         name: file.name,
         size: file.size,
@@ -85,8 +85,7 @@ export function DocsTab({ lead }: { lead: Lead }) {
     <div className="space-y-8 pb-8">
       <div className="space-y-4">
         <h3 className="text-sm font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-primary" />
-          Checklist de Documentação
+          <CheckCircle2 className="w-4 h-4 text-primary" /> Checklist de Documentação
         </h3>
         <div className="space-y-2 p-4 bg-muted/30 rounded-lg border border-border/50">
           <div className="flex justify-between text-sm mb-1">
@@ -133,8 +132,7 @@ export function DocsTab({ lead }: { lead: Lead }) {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" />
-            Arquivos Anexados
+            <FileText className="w-4 h-4 text-primary" /> Arquivos Anexados
           </h3>
           <div>
             <input
@@ -146,8 +144,7 @@ export function DocsTab({ lead }: { lead: Lead }) {
               onChange={handleFileUpload}
             />
             <Button onClick={() => fileInputRef.current?.click()} size="sm" className="gap-2">
-              <Upload className="w-4 h-4" />
-              Adicionar Documento
+              <Upload className="w-4 h-4" /> Adicionar Documento
             </Button>
           </div>
         </div>
