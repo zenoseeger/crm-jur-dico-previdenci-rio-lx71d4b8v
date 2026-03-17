@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select'
 import useLeadStore from '@/stores/useLeadStore'
 import { useAdminStore } from '@/stores/useAdminStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { toast } from 'sonner'
 import { Lead } from '@/types'
 
@@ -30,7 +31,8 @@ interface NewLeadDialogProps {
 export function NewLeadDialog({ children }: NewLeadDialogProps) {
   const [open, setOpen] = useState(false)
   const { addLead, currentPipelineId } = useLeadStore()
-  const { users, pipelines, pipelineStages, benefitTypes } = useAdminStore()
+  const { pipelines = [], pipelineStages = [], benefitTypes = [] } = useAdminStore() || {}
+  const { users = [] } = useAuthStore() || {}
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -42,9 +44,9 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
     if (open) {
       setName('')
       setPhone('')
-      setBenefitType(benefitTypes.length > 0 ? benefitTypes[0].name : '')
+      setBenefitType(benefitTypes?.length > 0 ? benefitTypes[0].name : '')
       setCity('')
-      setAssigneeId(users.length > 0 ? users[0].id : '')
+      setAssigneeId(users?.length > 0 ? users[0].id : '')
     }
   }, [open, users, benefitTypes])
 
@@ -62,13 +64,13 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
   const handleSave = () => {
     if (!name.trim() || phone.replace(/\D/g, '').length < 10) return
 
-    const pipelineId = currentPipelineId || pipelines[0]?.id
-    const sortedStages = pipelineStages
+    const pipelineId = currentPipelineId || pipelines?.[0]?.id
+    const sortedStages = (pipelineStages || [])
       .filter((s) => s.pipelineId === pipelineId)
       .sort((a, b) => a.order - b.order)
 
     const stage = sortedStages.length > 0 ? sortedStages[0].name : 'NOVO LEAD'
-    const assignee = users.find((u) => u.id === assigneeId)?.name || ''
+    const assignee = (users || []).find((u) => u.id === assigneeId)?.name || ''
 
     const newLead: Lead = {
       id: `l_${Date.now()}`,
@@ -152,15 +154,15 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
               <Select
                 value={benefitType}
                 onValueChange={setBenefitType}
-                disabled={benefitTypes.length === 0}
+                disabled={!benefitTypes || benefitTypes.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue
-                    placeholder={benefitTypes.length > 0 ? 'Selecione...' : 'Nenhum produto'}
+                    placeholder={benefitTypes?.length > 0 ? 'Selecione...' : 'Nenhum produto'}
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {benefitTypes.map((bt) => (
+                  {(benefitTypes || []).map((bt) => (
                     <SelectItem key={bt.id} value={bt.name}>
                       {bt.name}
                     </SelectItem>
@@ -175,7 +177,7 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.map((u) => (
+                  {(users || []).map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.name}
                     </SelectItem>
