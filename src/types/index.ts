@@ -66,6 +66,7 @@ export interface Lead {
   tasks?: Task[]
   activeFlows?: { flowId: string; currentStepOrder: number }[]
   documents?: DocumentFile[]
+  createdAt?: string
 }
 
 export interface ChatMessage {

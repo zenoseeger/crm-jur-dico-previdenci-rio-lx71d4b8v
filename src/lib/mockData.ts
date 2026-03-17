@@ -3,6 +3,12 @@ import { Lead, ChatMessage, DocumentReq } from '@/types'
 const yesterday = new Date(Date.now() - 86400000).toISOString()
 const tomorrow = new Date(Date.now() + 86400000).toISOString()
 
+const d1 = new Date(Date.now() - 2 * 86400000).toISOString()
+const d2 = new Date(Date.now() - 5 * 86400000).toISOString()
+const d3 = new Date(Date.now() - 10 * 86400000).toISOString()
+const d4 = new Date(Date.now() - 15 * 86400000).toISOString()
+const d5 = new Date(Date.now() - 35 * 86400000).toISOString()
+
 export const MOCK_LEADS: Lead[] = [
   {
     id: 'l1',
@@ -20,6 +26,7 @@ export const MOCK_LEADS: Lead[] = [
     aiScore: 85,
     aiEnabled: true,
     aiTriggered: true,
+    createdAt: d1,
     tasks: [
       {
         id: 't1',
@@ -47,6 +54,7 @@ export const MOCK_LEADS: Lead[] = [
     aiScore: 92,
     aiEnabled: true,
     aiTriggered: false,
+    createdAt: d2,
     tasks: [
       {
         id: 't2',
@@ -82,6 +90,7 @@ export const MOCK_LEADS: Lead[] = [
     aiScore: 88,
     aiEnabled: true,
     aiTriggered: false,
+    createdAt: d3,
   },
   {
     id: 'l4',
@@ -99,6 +108,7 @@ export const MOCK_LEADS: Lead[] = [
     aiScore: 75,
     aiEnabled: true,
     aiTriggered: true,
+    createdAt: d4,
   },
   {
     id: 'l5',
@@ -116,6 +126,7 @@ export const MOCK_LEADS: Lead[] = [
     aiScore: 95,
     aiEnabled: true,
     aiTriggered: true,
+    createdAt: d5,
     activeFlows: [{ flowId: 'f1', currentStepOrder: 1 }],
     tasks: [
       {
