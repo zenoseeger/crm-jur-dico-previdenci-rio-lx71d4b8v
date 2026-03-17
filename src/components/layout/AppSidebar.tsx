@@ -24,6 +24,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar'
 import { LogoutConfirm } from '@/components/auth/LogoutConfirm'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 const navItems = [
   { title: 'Pipeline', path: '/', icon: KanbanSquare },
@@ -37,6 +38,8 @@ const navItems = [
 
 export function AppSidebar() {
   const location = useLocation()
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'Admin'
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
@@ -56,27 +59,29 @@ export function AppSidebar() {
           <SidebarGroupLabel>Comercial & Gestão</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location.pathname === item.path}
-                    tooltip={item.title}
-                  >
-                    <Link to={item.path}>
-                      <item.icon
-                        className={cn(
-                          'w-4 h-4',
-                          location.pathname === item.path ? 'text-amber-600' : '',
-                        )}
-                      />
-                      <span className={cn(location.pathname === item.path ? 'font-medium' : '')}>
-                        {item.title}
-                      </span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems
+                .filter((item) => item.path !== '/administracao' || isAdmin)
+                .map((item) => (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname === item.path}
+                      tooltip={item.title}
+                    >
+                      <Link to={item.path}>
+                        <item.icon
+                          className={cn(
+                            'w-4 h-4',
+                            location.pathname === item.path ? 'text-amber-600' : '',
+                          )}
+                        />
+                        <span className={cn(location.pathname === item.path ? 'font-medium' : '')}>
+                          {item.title}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

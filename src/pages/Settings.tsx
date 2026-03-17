@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAdminStore } from '@/stores/useAdminStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { LogoutConfirm } from '@/components/auth/LogoutConfirm'
 import { toast } from 'sonner'
 import {
@@ -37,9 +38,12 @@ import {
 
 export default function Settings() {
   const { aiConfig, updateAIConfig } = useAdminStore()
+  const { user } = useAuthStore()
   const [aiData, setAiData] = useState(aiConfig)
   const [showApiKey, setShowApiKey] = useState(false)
   const [isTestingAI, setIsTestingAI] = useState(false)
+
+  const isAdmin = user?.role === 'Admin'
 
   const handleSaveAI = () => {
     updateAIConfig(aiData)
@@ -87,18 +91,22 @@ export default function Settings() {
             >
               <User className="w-4 h-4" /> Meu Perfil
             </TabsTrigger>
-            <TabsTrigger
-              value="ai"
-              className="w-full justify-start gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border p-3"
-            >
-              <Bot className="w-4 h-4" /> Integração IA
-            </TabsTrigger>
-            <TabsTrigger
-              value="preferences"
-              className="w-full justify-start gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border p-3"
-            >
-              <Shield className="w-4 h-4" /> Preferências
-            </TabsTrigger>
+            {isAdmin && (
+              <>
+                <TabsTrigger
+                  value="ai"
+                  className="w-full justify-start gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border p-3"
+                >
+                  <Bot className="w-4 h-4" /> Integração IA
+                </TabsTrigger>
+                <TabsTrigger
+                  value="preferences"
+                  className="w-full justify-start gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border p-3"
+                >
+                  <Shield className="w-4 h-4" /> Preferências
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <div className="flex-1 min-w-0">
@@ -114,11 +122,11 @@ export default function Settings() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Nome Completo</Label>
-                      <Input defaultValue="Administrador Principal" />
+                      <Input defaultValue={user?.name || ''} />
                     </div>
                     <div className="space-y-2">
                       <Label>E-mail</Label>
-                      <Input type="email" defaultValue="admin@escritorio.com" />
+                      <Input type="email" defaultValue={user?.email || ''} disabled />
                     </div>
                   </div>
                   <div className="space-y-2 pt-4 border-t">
@@ -163,142 +171,150 @@ export default function Settings() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="ai" className="m-0 border-none p-0 outline-none">
-              <Card className="border-slate-200 shadow-sm">
-                <CardHeader>
-                  <CardTitle>Integração com OpenAI</CardTitle>
-                  <CardDescription>
-                    Configure as credenciais para ativar os recursos de inteligência artificial do
-                    CRM.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label>
-                      OpenAI API Key <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        type={showApiKey ? 'text' : 'password'}
-                        value={aiData.apiKey}
-                        onChange={(e) => setAiData({ ...aiData, apiKey: e.target.value })}
-                        placeholder="sk-..."
-                        className="pr-10 font-mono text-sm"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                      >
-                        {showApiKey ? (
-                          <EyeOff className="w-4 h-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Necessário para análises de leads e respostas automatizadas.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Modelo de Linguagem</Label>
-                      <Select
-                        value={aiData.model}
-                        onValueChange={(v) => setAiData({ ...aiData, model: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
-                          <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                          <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Rápido)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <Label>Temperatura ({aiData.temperature})</Label>
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground">
-                          {aiData.temperature > 0.6 ? 'Mais Criativo' : 'Mais Preciso'}
-                        </span>
+            {isAdmin && (
+              <>
+                <TabsContent value="ai" className="m-0 border-none p-0 outline-none">
+                  <Card className="border-slate-200 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Integração com OpenAI</CardTitle>
+                      <CardDescription>
+                        Configure as credenciais para ativar os recursos de inteligência artificial
+                        do CRM.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="space-y-2">
+                        <Label>
+                          OpenAI API Key <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type={showApiKey ? 'text' : 'password'}
+                            value={aiData.apiKey}
+                            onChange={(e) => setAiData({ ...aiData, apiKey: e.target.value })}
+                            placeholder="sk-..."
+                            className="pr-10 font-mono text-sm"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                          >
+                            {showApiKey ? (
+                              <EyeOff className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Necessário para análises de leads e respostas automatizadas.
+                        </p>
                       </div>
-                      <Slider
-                        max={1}
-                        min={0}
-                        step={0.1}
-                        value={[aiData.temperature]}
-                        onValueChange={([val]) => setAiData({ ...aiData, temperature: val })}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="bg-slate-50 border-t justify-between py-4 flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleTestAI}
-                    disabled={!aiData.apiKey || isTestingAI}
-                  >
-                    {isTestingAI ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Bot className="w-4 h-4 mr-2" />
-                    )}
-                    Testar Conexão
-                  </Button>
-                  <Button onClick={handleSaveAI} className="bg-slate-900" disabled={isTestingAI}>
-                    Salvar Integração
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
 
-            <TabsContent value="preferences" className="m-0 border-none p-0 outline-none">
-              <Card className="border-slate-200 shadow-sm">
-                <CardHeader>
-                  <CardTitle>Preferências Globais</CardTitle>
-                  <CardDescription>
-                    Ajuste o comportamento geral da interface e notificações.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="space-y-0.5">
-                      <Label className="text-base">Notificações no Navegador</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receber alertas de novas mensagens e tarefas concluídas.
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="space-y-0.5">
-                      <Label className="text-base">Atendimento IA 24/7</Label>
-                      <p className="text-sm text-muted-foreground">
-                        A IA responderá leads mesmo fora do horário comercial.
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-                    <div className="space-y-0.5">
-                      <Label className="text-base flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-primary" /> Lembrete de Follow-up Diário
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Envio de resumo diário por e-mail com tarefas atrasadas.
-                      </p>
-                    </div>
-                    <Switch />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Modelo de Linguagem</Label>
+                          <Select
+                            value={aiData.model}
+                            onValueChange={(v) => setAiData({ ...aiData, model: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
+                              <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                              <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Rápido)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <Label>Temperatura ({aiData.temperature})</Label>
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground">
+                              {aiData.temperature > 0.6 ? 'Mais Criativo' : 'Mais Preciso'}
+                            </span>
+                          </div>
+                          <Slider
+                            max={1}
+                            min={0}
+                            step={0.1}
+                            value={[aiData.temperature]}
+                            onValueChange={([val]) => setAiData({ ...aiData, temperature: val })}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="bg-slate-50 border-t justify-between py-4 flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={handleTestAI}
+                        disabled={!aiData.apiKey || isTestingAI}
+                      >
+                        {isTestingAI ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Bot className="w-4 h-4 mr-2" />
+                        )}
+                        Testar Conexão
+                      </Button>
+                      <Button
+                        onClick={handleSaveAI}
+                        className="bg-slate-900"
+                        disabled={isTestingAI}
+                      >
+                        Salvar Integração
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="preferences" className="m-0 border-none p-0 outline-none">
+                  <Card className="border-slate-200 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Preferências Globais</CardTitle>
+                      <CardDescription>
+                        Ajuste o comportamento geral da interface e notificações.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-0.5">
+                          <Label className="text-base">Notificações no Navegador</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Receber alertas de novas mensagens e tarefas concluídas.
+                          </p>
+                        </div>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-0.5">
+                          <Label className="text-base">Atendimento IA 24/7</Label>
+                          <p className="text-sm text-muted-foreground">
+                            A IA responderá leads mesmo fora do horário comercial.
+                          </p>
+                        </div>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                        <div className="space-y-0.5">
+                          <Label className="text-base flex items-center gap-2">
+                            <Bell className="w-4 h-4 text-primary" /> Lembrete de Follow-up Diário
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Envio de resumo diário por e-mail com tarefas atrasadas.
+                          </p>
+                        </div>
+                        <Switch />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </>
+            )}
           </div>
         </Tabs>
       </div>

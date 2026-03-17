@@ -6,6 +6,7 @@ import { LeadProvider } from '@/stores/useLeadStore'
 import { AdminProvider } from '@/stores/useAdminStore'
 import { AuthProvider } from '@/stores/useAuthStore'
 import { RequireAuth } from '@/components/auth/RequireAuth'
+import { RequireAdmin } from '@/components/auth/RequireAdmin'
 
 import Layout from './components/Layout'
 import Index from './pages/Index'
@@ -46,7 +47,14 @@ const App = () => (
                 <Route path="/clientes" element={<Clients />} />
                 <Route path="/relatorios" element={<Reports />} />
                 <Route path="/configuracoes" element={<Settings />} />
-                <Route path="/administracao" element={<Administration />} />
+                <Route
+                  path="/administracao"
+                  element={
+                    <RequireAdmin>
+                      <Administration />
+                    </RequireAdmin>
+                  }
+                />
               </Route>
 
               <Route path="*" element={<NotFound />} />

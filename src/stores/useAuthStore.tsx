@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           id: `u${Date.now()}`,
           name,
           email: email.trim(),
-          role: 'Admin',
+          role: 'SDR', // Default to restricted user to test RBAC
           passwordHash: pass,
         }
 
