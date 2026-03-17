@@ -1,5 +1,14 @@
 import React from 'react'
-import { ShieldCheck, Users, Tags, MessageSquare, Bot, GitMerge, Workflow } from 'lucide-react'
+import {
+  ShieldCheck,
+  Users,
+  Tags,
+  MessageSquare,
+  Bot,
+  GitMerge,
+  Workflow,
+  Package,
+} from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { UserManagement } from '@/components/admin/UserManagement'
 import { TagManagement } from '@/components/admin/TagManagement'
@@ -7,6 +16,7 @@ import { WhatsAppConfig } from '@/components/admin/WhatsAppConfig'
 import { AIStudio } from '@/components/admin/AIStudio'
 import { PipelineManagement } from '@/components/admin/PipelineManagement'
 import { AIFlowManagement } from '@/components/admin/AIFlowManagement'
+import { ProductManagement } from '@/components/admin/ProductManagement'
 
 export default function Administration() {
   return (
@@ -20,7 +30,7 @@ export default function Administration() {
             Administração
           </h1>
           <p className="text-muted-foreground">
-            Gerencie equipe, integrações, tags, pipeline e automações.
+            Gerencie equipe, produtos, integrações, tags, pipeline e automações.
           </p>
         </div>
       </div>
@@ -32,6 +42,12 @@ export default function Administration() {
             className="data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-amber-500 gap-2"
           >
             <GitMerge className="w-4 h-4" /> Pipeline
+          </TabsTrigger>
+          <TabsTrigger
+            value="products"
+            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-amber-500 gap-2"
+          >
+            <Package className="w-4 h-4" /> Produtos
           </TabsTrigger>
           <TabsTrigger
             value="ai-flows"
@@ -67,6 +83,10 @@ export default function Administration() {
 
         <TabsContent value="pipeline" className="m-0">
           <PipelineManagement />
+        </TabsContent>
+
+        <TabsContent value="products" className="m-0">
+          <ProductManagement />
         </TabsContent>
 
         <TabsContent value="ai-flows" className="m-0">

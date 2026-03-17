@@ -23,15 +23,6 @@ import { useAdminStore } from '@/stores/useAdminStore'
 import { toast } from 'sonner'
 import { Lead } from '@/types'
 
-const BENEFIT_TYPES = [
-  'Aposentadoria por Idade',
-  'Aposentadoria Rural',
-  'BPC/LOAS',
-  'Pensão por Morte',
-  'Auxílio Doença',
-  'Outros',
-]
-
 interface NewLeadDialogProps {
   children: React.ReactNode
 }
@@ -39,11 +30,11 @@ interface NewLeadDialogProps {
 export function NewLeadDialog({ children }: NewLeadDialogProps) {
   const [open, setOpen] = useState(false)
   const { addLead, currentPipelineId } = useLeadStore()
-  const { users, pipelines, pipelineStages } = useAdminStore()
+  const { users, pipelines, pipelineStages, benefitTypes } = useAdminStore()
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [benefitType, setBenefitType] = useState(BENEFIT_TYPES[0])
+  const [benefitType, setBenefitType] = useState('')
   const [city, setCity] = useState('')
   const [assigneeId, setAssigneeId] = useState('')
 
@@ -51,11 +42,11 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
     if (open) {
       setName('')
       setPhone('')
-      setBenefitType(BENEFIT_TYPES[0])
+      setBenefitType(benefitTypes.length > 0 ? benefitTypes[0].name : '')
       setCity('')
       setAssigneeId(users.length > 0 ? users[0].id : '')
     }
-  }, [open, users])
+  }, [open, users, benefitTypes])
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, '')
@@ -102,7 +93,7 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
   }
 
   const isPhoneValid = phone.replace(/\D/g, '').length >= 10
-  const isValid = name.trim().length > 0 && isPhoneValid
+  const isValid = name.trim().length > 0 && isPhoneValid && benefitType !== ''
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -155,15 +146,23 @@ export function NewLeadDialog({ children }: NewLeadDialogProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Tipo de Benefício</Label>
-              <Select value={benefitType} onValueChange={setBenefitType}>
+              <Label>
+                Produto / Benefício <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={benefitType}
+                onValueChange={setBenefitType}
+                disabled={benefitTypes.length === 0}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
+                  <SelectValue
+                    placeholder={benefitTypes.length > 0 ? 'Selecione...' : 'Nenhum produto'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {BENEFIT_TYPES.map((bt) => (
-                    <SelectItem key={bt} value={bt}>
-                      {bt}
+                  {benefitTypes.map((bt) => (
+                    <SelectItem key={bt.id} value={bt.name}>
+                      {bt.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

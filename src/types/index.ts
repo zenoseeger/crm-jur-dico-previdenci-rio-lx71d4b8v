@@ -105,6 +105,12 @@ export interface TagDef {
   category: TagCategory
 }
 
+export interface BenefitType {
+  id: string
+  name: string
+  createdAt: string
+}
+
 export interface AIConfig {
   apiKey: string
   prompt: string

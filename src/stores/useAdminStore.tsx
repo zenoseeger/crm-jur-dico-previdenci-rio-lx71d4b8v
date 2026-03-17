@@ -1,11 +1,21 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react'
-import { User, TagDef, AIConfig, WhatsAppConfig, PipelineStage, AIFlow, Pipeline } from '@/types'
+import {
+  User,
+  TagDef,
+  AIConfig,
+  WhatsAppConfig,
+  PipelineStage,
+  AIFlow,
+  Pipeline,
+  BenefitType,
+} from '@/types'
 import { toast } from 'sonner'
 
 interface AdminStore {
   currentUser: User | null
   users: User[]
   tags: TagDef[]
+  benefitTypes: BenefitType[]
   aiConfig: AIConfig
   whatsAppConfig: WhatsAppConfig
   pipelines: Pipeline[]
@@ -17,6 +27,9 @@ interface AdminStore {
   addTag: (tag: Omit<TagDef, 'id'>) => void
   updateTag: (id: string, tag: Partial<TagDef>) => void
   deleteTag: (id: string) => void
+  addBenefitType: (name: string) => void
+  updateBenefitType: (id: string, name: string) => void
+  deleteBenefitType: (id: string) => void
   updateAIConfig: (config: Partial<AIConfig>) => void
   updateWhatsAppConfig: (config: Partial<WhatsAppConfig>) => void
   addPipeline: (p: Omit<Pipeline, 'id'>, steps: string[]) => string
@@ -50,6 +63,15 @@ const initialTags: TagDef[] = [
   { id: 't4', name: 'Urgente', color: '#f59e0b', category: 'Follow-up' },
 ]
 
+const initialBenefitTypes: BenefitType[] = [
+  { id: 'b1', name: 'Aposentadoria por Idade', createdAt: new Date().toISOString() },
+  { id: 'b2', name: 'Aposentadoria Rural', createdAt: new Date().toISOString() },
+  { id: 'b3', name: 'BPC/LOAS', createdAt: new Date().toISOString() },
+  { id: 'b4', name: 'Pensão por Morte', createdAt: new Date().toISOString() },
+  { id: 'b5', name: 'Auxílio Doença', createdAt: new Date().toISOString() },
+  { id: 'b6', name: 'Outros', createdAt: new Date().toISOString() },
+]
+
 const initialPipelineStages: PipelineStage[] = [
   { id: 's1', pipelineId: 'p1', name: 'NOVO LEAD', order: 0, autoTags: [], autoTasks: [] },
   { id: 's2', pipelineId: 'p1', name: 'EM QUALIFICAÇÃO', order: 1, autoTags: [], autoTasks: [] },
@@ -70,6 +92,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [pipelines, setPipelines] = useState<Pipeline[]>(initialPipelines)
   const [tags, setTags] = useState<TagDef[]>(initialTags)
+  const [benefitTypes, setBenefitTypes] = useState<BenefitType[]>(initialBenefitTypes)
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(initialPipelineStages)
   const [currentUser] = useState<User | null>(initialUsers[0])
   const [aiConfig, setAiConfig] = useState<AIConfig>({
@@ -123,6 +146,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     users,
     pipelines,
     tags,
+    benefitTypes,
     aiConfig,
     whatsAppConfig,
     pipelineStages,
@@ -135,6 +159,21 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     updateTag: (id: string, t: Partial<TagDef>) =>
       setTags((p) => p.map((x) => (x.id === id ? { ...x, ...t } : x))),
     deleteTag: (id: string) => setTags((p) => p.filter((x) => x.id !== id)),
+    addBenefitType: (name: string) => {
+      setBenefitTypes((p) => [
+        ...p,
+        { id: `b${Date.now()}`, name, createdAt: new Date().toISOString() },
+      ])
+      toast.success('Produto criado com sucesso!')
+    },
+    updateBenefitType: (id: string, name: string) => {
+      setBenefitTypes((p) => p.map((x) => (x.id === id ? { ...x, name } : x)))
+      toast.success('Produto atualizado com sucesso!')
+    },
+    deleteBenefitType: (id: string) => {
+      setBenefitTypes((p) => p.filter((x) => x.id !== id))
+      toast.success('Produto excluído com sucesso!')
+    },
     updateAIConfig: (c: Partial<AIConfig>) => setAiConfig((p) => ({ ...p, ...c })),
     updateWhatsAppConfig: (c: Partial<WhatsAppConfig>) =>
       setWhatsAppConfig((p) => ({ ...p, ...c })),
