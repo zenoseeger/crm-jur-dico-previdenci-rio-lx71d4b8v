@@ -3,7 +3,15 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Search, Filter, Download, Plus } from 'lucide-react'
+import {
+  Search,
+  Filter,
+  Download,
+  Plus,
+  Eye,
+  FileText,
+  Download as DownloadIcon,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -29,46 +37,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-
-interface Client {
-  id: string
-  name: string
-  cpf: string
-  email: string
-  phone: string
-  status: string
-  date: string
-}
-
-const INITIAL_CLIENTS: Client[] = [
-  {
-    id: '1',
-    name: 'João Silva',
-    cpf: '123.456.789-00',
-    email: 'joao@email.com',
-    phone: '(11) 98765-4321',
-    status: 'Cliente Ativo',
-    date: '14/03/2026',
-  },
-  {
-    id: '2',
-    name: 'Maria Souza',
-    cpf: '987.654.321-11',
-    email: 'maria@email.com',
-    phone: '(21) 99999-8888',
-    status: 'Lead Quente',
-    date: '12/03/2026',
-  },
-  {
-    id: '3',
-    name: 'Carlos Oliveira',
-    cpf: '456.123.789-22',
-    email: 'carlos@email.com',
-    phone: '(31) 97777-6666',
-    status: 'Inativo',
-    date: '01/03/2026',
-  },
-]
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useClientStore } from '@/stores/useClientStore'
+import { Client } from '@/types'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 const maskCPF = (value: string) => {
   return value
@@ -88,8 +61,10 @@ const maskPhone = (value: string) => {
 }
 
 export default function Clients() {
-  const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS)
+  const { clients, addClient } = useClientStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+
   const [formData, setFormData] = useState({
     name: '',
     cpf: '',
@@ -105,12 +80,13 @@ export default function Clients() {
     }
 
     const newClient: Client = {
-      id: Date.now().toString(),
+      id: `c_${Date.now()}`,
       ...formData,
       date: new Date().toLocaleDateString('pt-BR'),
+      documents: [],
     }
 
-    setClients([newClient, ...clients])
+    addClient(newClient)
     setIsDialogOpen(false)
     setFormData({ name: '', cpf: '', email: '', phone: '', status: 'Lead' })
     toast.success('Cliente cadastrado com sucesso!')
@@ -129,12 +105,20 @@ export default function Clients() {
     }
   }
 
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Clientes e Leads</h1>
-          <p className="text-muted-foreground">Gerencie sua base de contatos manualmente.</p>
+          <p className="text-muted-foreground">Gerencie sua base de contatos e documentações.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2">
@@ -152,48 +136,40 @@ export default function Clients() {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Nome Completo *</Label>
+                  <Label>Nome Completo *</Label>
                   <Input
-                    id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Ex: Maria da Silva"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="cpf">CPF *</Label>
+                    <Label>CPF *</Label>
                     <Input
-                      id="cpf"
                       value={formData.cpf}
                       onChange={(e) => setFormData({ ...formData, cpf: maskCPF(e.target.value) })}
-                      placeholder="000.000.000-00"
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="phone">Telefone *</Label>
+                    <Label>Telefone *</Label>
                     <Input
-                      id="phone"
                       value={formData.phone}
                       onChange={(e) =>
                         setFormData({ ...formData, phone: maskPhone(e.target.value) })
                       }
-                      placeholder="(00) 00000-0000"
                     />
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="email">E-mail</Label>
+                  <Label>E-mail</Label>
                   <Input
-                    id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="cliente@email.com"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="status">Status Atual</Label>
+                  <Label>Status Atual</Label>
                   <Select
                     value={formData.status}
                     onValueChange={(v) => setFormData({ ...formData, status: v })}
@@ -202,7 +178,7 @@ export default function Clients() {
                       <SelectValue placeholder="Selecione um status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Lead">Lead Novo</SelectItem>
+                      <SelectItem value="Lead Novo">Lead Novo</SelectItem>
                       <SelectItem value="Lead Quente">Lead Quente</SelectItem>
                       <SelectItem value="Cliente Ativo">Cliente Ativo</SelectItem>
                       <SelectItem value="Inativo">Inativo</SelectItem>
@@ -254,7 +230,7 @@ export default function Clients() {
                       {client.email || 'Sem e-mail'}
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{client.cpf}</TableCell>
+                  <TableCell className="font-mono text-sm">{client.cpf || '-'}</TableCell>
                   <TableCell>{client.phone}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusColor(client.status)}>
@@ -263,7 +239,7 @@ export default function Clients() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{client.date}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedClient(client)}>
                       Ver Perfil
                     </Button>
                   </TableCell>
@@ -280,6 +256,118 @@ export default function Clients() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
+        <DialogContent className="sm:max-w-[650px] min-h-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">{selectedClient?.name}</DialogTitle>
+          </DialogHeader>
+
+          <Tabs defaultValue="perfil" className="w-full mt-4">
+            <TabsList className="w-full grid grid-cols-2">
+              <TabsTrigger value="perfil">Perfil do Cliente</TabsTrigger>
+              <TabsTrigger value="documentos">
+                Documentação
+                {selectedClient?.documents && selectedClient.documents.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 px-1.5 py-0.5">
+                    {selectedClient.documents.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="perfil" className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4 border p-4 rounded-lg bg-card">
+                <div>
+                  <Label className="text-muted-foreground text-xs uppercase">E-mail</Label>
+                  <p className="font-medium">{selectedClient?.email || 'Não informado'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs uppercase">Telefone</Label>
+                  <p className="font-medium">{selectedClient?.phone}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs uppercase">CPF</Label>
+                  <p className="font-medium">{selectedClient?.cpf || 'Não informado'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs uppercase">Status</Label>
+                  <p className="font-medium">{selectedClient?.status}</p>
+                </div>
+                {selectedClient?.city && (
+                  <div>
+                    <Label className="text-muted-foreground text-xs uppercase">Cidade/UF</Label>
+                    <p className="font-medium">{selectedClient.city}</p>
+                  </div>
+                )}
+                {selectedClient?.benefitType && (
+                  <div>
+                    <Label className="text-muted-foreground text-xs uppercase">
+                      Benefício Desejado
+                    </Label>
+                    <p className="font-medium">{selectedClient.benefitType}</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="documentos" className="py-4">
+              {!selectedClient?.documents || selectedClient.documents.length === 0 ? (
+                <div className="text-center py-12 border border-dashed rounded-lg bg-muted/20">
+                  <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Nenhum documento anexado.
+                  </p>
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead>Arquivo</TableHead>
+                        <TableHead className="w-[100px]">Tamanho</TableHead>
+                        <TableHead className="text-right w-[100px]">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedClient.documents.map((doc) => (
+                        <TableRow key={doc.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2 max-w-[250px]">
+                              <FileText className="w-4 h-4 text-primary shrink-0" />
+                              <span className="truncate text-sm font-medium" title={doc.name}>
+                                {doc.name}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {format(new Date(doc.uploadDate), 'dd/MM/yyyy', { locale: ptBR })}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {formatBytes(doc.size)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                              <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                <Eye className="w-4 h-4" />
+                              </a>
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                              <a href={doc.url} download={doc.name}>
+                                <DownloadIcon className="w-4 h-4" />
+                              </a>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

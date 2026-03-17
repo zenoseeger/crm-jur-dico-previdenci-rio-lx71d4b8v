@@ -22,7 +22,8 @@ export interface Task {
 
 export interface DocumentFile {
   id: string
-  leadId: string
+  leadId?: string
+  clientId?: string
   name: string
   size: number
   type: string
@@ -67,6 +68,19 @@ export interface Lead {
   activeFlows?: { flowId: string; currentStepOrder: number }[]
   documents?: DocumentFile[]
   createdAt?: string
+}
+
+export interface Client {
+  id: string
+  name: string
+  cpf?: string
+  email?: string
+  phone: string
+  status: string
+  date: string
+  city?: string
+  benefitType?: string
+  documents?: DocumentFile[]
 }
 
 export interface ChatMessage {
