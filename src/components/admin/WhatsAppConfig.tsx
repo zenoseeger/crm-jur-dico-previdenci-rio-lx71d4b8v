@@ -43,8 +43,14 @@ export function WhatsAppConfig() {
   const checkStatus = useCallback(async () => {
     if (config.provider !== 'z-api' || !config.instance_id || !config.token) return
     try {
+      const headers: any = {}
+      if (config.client_token) {
+        headers['client-token'] = config.client_token
+      }
+
       const res = await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
+        { headers },
       )
       if (res.ok) {
         const data = await res.json()

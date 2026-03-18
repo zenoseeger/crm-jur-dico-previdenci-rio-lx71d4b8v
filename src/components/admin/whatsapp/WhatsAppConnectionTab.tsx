@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Save, LogOut, QrCode, Copy } from 'lucide-react'
+import { Loader2, Save, LogOut, QrCode, Copy, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ConnectionTabProps {
@@ -33,6 +33,8 @@ export function WhatsAppConnectionTab({
   onConnect,
   onDisconnect,
 }: ConnectionTabProps) {
+  const [showClientToken, setShowClientToken] = useState(false)
+
   const handleProviderChange = (v: 'none' | 'z-api') => {
     setConfig({
       ...config,
@@ -83,12 +85,28 @@ export function WhatsAppConnectionTab({
             </div>
             <div className="space-y-2">
               <Label>Client Token (Segurança)</Label>
-              <Input
-                type="password"
-                placeholder="Seu Client Token (opcional/recomendado)"
-                value={config.client_token || ''}
-                onChange={(e) => setConfig({ ...config, client_token: e.target.value })}
-              />
+              <div className="relative">
+                <Input
+                  type={showClientToken ? 'text' : 'password'}
+                  placeholder="Seu Client Token (obrigatório para webhook)"
+                  value={config.client_token || ''}
+                  onChange={(e) => setConfig({ ...config, client_token: e.target.value })}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowClientToken(!showClientToken)}
+                >
+                  {showClientToken ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 

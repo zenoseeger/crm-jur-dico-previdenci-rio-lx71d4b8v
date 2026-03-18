@@ -11,6 +11,13 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
   const [requiresReset, setRequiresReset] = useState(false)
   const [isTestingWebhook, setIsTestingWebhook] = useState(false)
 
+  const getHeaders = (isJson = false) => {
+    const headers: any = {}
+    if (isJson) headers['Content-Type'] = 'application/json'
+    if (config.client_token) headers['client-token'] = config.client_token
+    return headers
+  }
+
   const updateDbStatus = async (status: string, lastError: string | null = null) => {
     if (!config.id) return
     await supabase
@@ -35,6 +42,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
     try {
       const statusRes = await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
+        { headers: getHeaders() },
       )
       if (statusRes.ok) {
         const statusData = await statusRes.json()
@@ -50,6 +58,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
 
       const res = await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/qr-code/image`,
+        { headers: getHeaders() },
       )
 
       if (res.ok) {
@@ -104,7 +113,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
     try {
       await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/disconnect-account`,
-        { method: 'POST' },
+        { method: 'POST', headers: getHeaders() },
       )
       await updateDbStatus('disconnected', null)
       await logWhatsAppEvent(user.id, 'DISCONNECT', 'Instância desconectada pelo usuário.')
@@ -120,10 +129,11 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
     try {
       await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/disconnect-account`,
-        { method: 'POST' },
+        { method: 'POST', headers: getHeaders() },
       )
       await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/disconnect`,
+        { headers: getHeaders() },
       )
       await updateDbStatus('disconnected', null)
       await logWhatsAppEvent(user.id, 'RESET', 'Reinicialização forçada da instância.')
@@ -139,8 +149,14 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
   }
 
   const handleTestWebhook = async () => {
-    if (!config.instance_id || !config.token) {
-      toast.error('Configuração incompleta: Instance ID ou Token ausente.')
+    if (!config.instance_id || !config.token || !config.client_token) {
+      if (!config.client_token) {
+        toast.error(
+          'Seu Client-Token não está configurado. Por favor, preencha o campo na aba de configuração e salve.',
+        )
+      } else {
+        toast.error('Configuração incompleta: Instance ID ou Token ausente.')
+      }
       return
     }
 
@@ -151,6 +167,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
     try {
       const statusRes = await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
+        { headers: getHeaders() },
       )
 
       let statusData: any = {}
@@ -163,7 +180,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
       if (!statusRes.ok) {
         let errMsg = 'Erro desconhecido na Z-api.'
         if (statusRes.status === 401 || statusRes.status === 403) {
-          errMsg = 'Falha na Autenticação: Verifique o Token da Z-api.'
+          errMsg = 'Falha na Autenticação: Verifique o Token da Z-api e o Client Token.'
         } else if (statusRes.status === 404) {
           errMsg = 'Instância não encontrada: Verifique o Instance ID.'
         } else if (statusRes.status === 400) {
@@ -188,6 +205,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
       try {
         const getWebhookRes = await fetch(
           `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/webhook-delivery`,
+          { headers: getHeaders() },
         )
         if (getWebhookRes.ok) {
           const whData = await getWebhookRes.json()
@@ -205,7 +223,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
           `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/update-webhook-delivery`,
           {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getHeaders(true),
             body: JSON.stringify({ value: webhookUrl }),
           },
         )
