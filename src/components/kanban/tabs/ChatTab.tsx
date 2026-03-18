@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Send, Bot, KeyRound, CheckCircle2, Paperclip, Loader2 } from 'lucide-react'
+import { Send, Bot, KeyRound, CheckCircle2, Paperclip, Loader2, Mic, Trash2 } from 'lucide-react'
 import { Lead, Message, DbWhatsAppConfig } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,14 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const [sendAsLead, setSendAsLead] = useState(false)
   const [config, setConfig] = useState<DbWhatsAppConfig | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+
+  // Audio recording state
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -80,6 +88,16 @@ export function ChatTab({ lead }: { lead: Lead }) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages])
+
+  // Cleanup recording on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop())
+      }
+    }
+  }, [])
 
   const aiEnabledForLead = lead.aiEnabled !== false
   const globalAiEnabled = aiConfig.enabled
@@ -238,6 +256,87 @@ export function ChatTab({ lead }: { lead: Lead }) {
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+      setRecordingDuration(0)
+
+      timerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1)
+      }, 1000)
+    } catch (err) {
+      toast.error('Erro ao acessar o microfone. Verifique as permissões do navegador.')
+      console.error('Mic error:', err)
+    }
+  }
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop())
+      setIsRecording(false)
+      if (timerRef.current) clearInterval(timerRef.current)
+      audioChunksRef.current = []
+    }
+  }
+
+  const uploadAndSendAudio = async (blob: Blob) => {
+    setIsUploading(true)
+    try {
+      const ext = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('mp4') ? 'm4a' : 'webm'
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
+      const filePath = `${user?.id}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat-media')
+        .upload(filePath, blob, { cacheControl: '3600', upsert: false })
+
+      if (uploadError) throw uploadError
+
+      const { data: publicUrlData } = supabase.storage.from('chat-media').getPublicUrl(filePath)
+
+      await sendMessageToDbAndZapi(
+        '', // Empty text for audio
+        sendAsLead ? 'inbound' : 'outbound',
+        false,
+        publicUrlData.publicUrl,
+        'audio',
+      )
+    } catch (err: any) {
+      toast.error('Erro ao enviar áudio.')
+      console.error(err)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const stopAndSendRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.onstop = async () => {
+        mediaRecorderRef.current?.stream.getTracks().forEach((t) => t.stop())
+        if (timerRef.current) clearInterval(timerRef.current)
+        setIsRecording(false)
+
+        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm'
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
+        audioChunksRef.current = []
+
+        await uploadAndSendAudio(audioBlob)
+      }
+      mediaRecorderRef.current.stop()
     }
   }
 
@@ -455,21 +554,24 @@ export function ChatTab({ lead }: { lead: Lead }) {
             </Label>
           </div>
         </div>
-        <form onSubmit={sendMessage} className="flex gap-2 items-center">
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            {isUploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Paperclip className="w-5 h-5" />
-            )}
-          </Button>
+        <form onSubmit={sendMessage} className="flex gap-2 items-center w-full">
+          {!isRecording && (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Paperclip className="w-5 h-5" />
+              )}
+            </Button>
+          )}
+
           <input
             type="file"
             ref={fileInputRef}
@@ -477,24 +579,68 @@ export function ChatTab({ lead }: { lead: Lead }) {
             accept="image/*,audio/*"
             onChange={handleFileUpload}
           />
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={sendAsLead ? 'Digite como Lead...' : 'Digite uma mensagem...'}
-            className="flex-1 bg-muted/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary"
-            disabled={isUploading}
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!input.trim() || isUploading}
-            className={cn(
-              'shrink-0 rounded-full w-10 h-10 shadow-md',
-              sendAsLead ? 'bg-amber-500 hover:bg-amber-600 text-white' : '',
-            )}
-          >
-            <Send className="w-4 h-4 ml-0.5" />
-          </Button>
+
+          {isRecording ? (
+            <div className="flex flex-1 items-center justify-between bg-destructive/5 border border-destructive/20 rounded-full px-4 h-10 animate-fade-in">
+              <div className="flex items-center gap-3 text-destructive">
+                <div className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse" />
+                <span className="text-sm font-mono font-medium tracking-wider">
+                  {String(Math.floor(recordingDuration / 60)).padStart(2, '0')}:
+                  {String(recordingDuration % 60).padStart(2, '0')}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
+                  onClick={cancelRecording}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90 shadow-sm text-primary-foreground ml-1"
+                  onClick={stopAndSendRecording}
+                >
+                  <Send className="w-3.5 h-3.5 ml-0.5" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={sendAsLead ? 'Digite como Lead...' : 'Digite uma mensagem...'}
+                className="flex-1 bg-muted/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary"
+                disabled={isUploading}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={startRecording}
+                disabled={isUploading}
+                className="shrink-0 rounded-full w-10 h-10 text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Mic className="w-5 h-5" />
+              </Button>
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!input.trim() || isUploading}
+                className={cn(
+                  'shrink-0 rounded-full w-10 h-10 shadow-md transition-all',
+                  sendAsLead ? 'bg-amber-500 hover:bg-amber-600 text-white' : '',
+                )}
+              >
+                <Send className="w-4 h-4 ml-0.5" />
+              </Button>
+            </>
+          )}
         </form>
       </div>
     </div>
