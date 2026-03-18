@@ -21,31 +21,32 @@ export function WhatsAppConfig() {
 
   const actions = useWhatsAppActions(config, setConfig, user)
 
-  useEffect(() => {
+  const fetchConfig = useCallback(async () => {
     if (!user) return
-    const fetchConfig = async () => {
-      const { data, error } = await supabase
-        .from('whatsapp_configs')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle()
+    const { data, error } = await supabase
+      .from('whatsapp_configs')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching WhatsApp config:', error)
-      } else if (data) {
-        setConfig(data)
-      }
-      setLoading(false)
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching WhatsApp config:', error)
+    } else if (data) {
+      setConfig(data)
     }
-    fetchConfig()
+    setLoading(false)
   }, [user])
+
+  useEffect(() => {
+    fetchConfig()
+  }, [fetchConfig])
 
   const checkStatus = useCallback(async () => {
     if (config.provider !== 'z-api' || !config.instance_id || !config.token) return
     try {
       const headers: any = {}
       if (config.client_token) {
-        headers['client-token'] = config.client_token
+        headers['Client-Token'] = config.client_token
       }
 
       const res = await fetch(
@@ -82,24 +83,39 @@ export function WhatsAppConfig() {
   const handleSave = async () => {
     if (!user) return
     setSaving(true)
-    const payload: any = {
-      user_id: user.id,
+
+    const updatePayload = {
       provider: config.provider,
       instance_id: config.instance_id,
       token: config.token,
       client_token: config.client_token,
-      status: config.status || 'disconnected',
     }
-    if (config.id) payload.id = config.id
 
-    const { data, error } = await supabase
-      .from('whatsapp_configs')
-      .upsert(payload, { onConflict: 'user_id' })
-      .select()
-      .single()
+    let result
+    if (config.id) {
+      result = await supabase
+        .from('whatsapp_configs')
+        .update(updatePayload)
+        .eq('id', config.id)
+        .select()
+        .single()
+    } else {
+      result = await supabase
+        .from('whatsapp_configs')
+        .insert({
+          ...updatePayload,
+          user_id: user.id,
+          status: 'disconnected',
+        })
+        .select()
+        .single()
+    }
+
+    const { data, error } = result
 
     if (error) {
       toast.error('Erro ao salvar as configurações.')
+      console.error(error)
     } else {
       toast.success('Configurações salvas com sucesso!')
       if (data) setConfig(data)

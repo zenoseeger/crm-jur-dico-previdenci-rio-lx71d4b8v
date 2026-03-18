@@ -14,7 +14,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
   const getHeaders = (isJson = false) => {
     const headers: any = {}
     if (isJson) headers['Content-Type'] = 'application/json'
-    if (config.client_token) headers['client-token'] = config.client_token
+    if (config.client_token) headers['Client-Token'] = config.client_token
     return headers
   }
 
