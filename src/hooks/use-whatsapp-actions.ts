@@ -67,7 +67,9 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
         let errorBody = {}
         try {
           errorBody = await res.json()
-        } catch (e) {}
+        } catch (e) {
+          // ignore parsing error
+        }
 
         const errorMessage =
           (errorBody as any).error || (errorBody as any).message || `Erro HTTP ${res.status}`
@@ -154,7 +156,9 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
       let statusData: any = {}
       try {
         statusData = await statusRes.json()
-      } catch (e) {}
+      } catch (e) {
+        // ignore parsing error
+      }
 
       if (!statusRes.ok) {
         let errMsg = 'Erro desconhecido na Z-api.'
@@ -189,7 +193,9 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
           const whData = await getWebhookRes.json()
           currentWebhook = whData.value
         }
-      } catch (e) {}
+      } catch (e) {
+        // ignore fetch error
+      }
 
       let webhookData: any = { status: 'already_matched' }
       let webhookConfigured = false
@@ -206,7 +212,9 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
 
         try {
           webhookData = await webhookRes.json()
-        } catch (e) {}
+        } catch (e) {
+          // ignore parsing error
+        }
 
         if (!webhookRes.ok) {
           const errMsg =
