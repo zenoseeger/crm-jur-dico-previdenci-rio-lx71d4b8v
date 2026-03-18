@@ -39,12 +39,14 @@ export function LeadDrawer() {
           <div className="flex items-start justify-between">
             <div>
               <SheetTitle className="text-2xl text-foreground">{selectedLead.name}</SheetTitle>
-              <SheetDescription className="flex items-center gap-2 mt-1">
-                <span>{selectedLead.phone}</span>
-                <span className="w-1 h-1 rounded-full bg-border" />
-                <Badge variant="outline" className="font-normal bg-background">
-                  {selectedLead.stage}
-                </Badge>
+              <SheetDescription asChild>
+                <div className="flex items-center gap-2 mt-1">
+                  <span>{selectedLead.phone}</span>
+                  <span className="w-1 h-1 rounded-full bg-border" />
+                  <Badge variant="outline" className="font-normal bg-background">
+                    {selectedLead.stage}
+                  </Badge>
+                </div>
               </SheetDescription>
             </div>
             <LeadActions lead={selectedLead} />
