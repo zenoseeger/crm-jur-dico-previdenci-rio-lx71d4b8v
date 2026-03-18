@@ -182,6 +182,30 @@ export type Database = {
         }
         Relationships: []
       }
+      task_automations: {
+        Row: {
+          created_at: string
+          id: string
+          stage: string
+          task_title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stage: string
+          task_title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stage?: string
+          task_title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -373,6 +397,12 @@ export const Constants = {
 //   ai_triggered: boolean (nullable, default: false)
 //   tasks: jsonb (nullable, default: '[]'::jsonb)
 //   active_flows: jsonb (nullable, default: '[]'::jsonb)
+// Table: task_automations
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   stage: text (not null)
+//   task_title: text (not null)
+//   created_at: timestamp with time zone (not null, default: now())
 
 // --- CONSTRAINTS ---
 // Table: clients
@@ -387,6 +417,9 @@ export const Constants = {
 // Table: leads
 //   PRIMARY KEY leads_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY leads_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: task_automations
+//   PRIMARY KEY task_automations_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY task_automations_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: clients
@@ -419,3 +452,13 @@ export const Constants = {
 //   Policy "authenticated_update_leads" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+// Table: task_automations
+//   Policy "authenticated_delete_task_automations" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//   Policy "authenticated_insert_task_automations" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (auth.uid() = user_id)
+//   Policy "authenticated_select_task_automations" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//   Policy "authenticated_update_task_automations" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//     WITH CHECK: (auth.uid() = user_id)

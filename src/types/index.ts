@@ -51,6 +51,8 @@ export interface TaskAutomation {
   userId: string
   stage: string
   taskTitle: string
+  taskDescription?: string
+  dueDaysOffset?: number
   createdAt: string
 }
 

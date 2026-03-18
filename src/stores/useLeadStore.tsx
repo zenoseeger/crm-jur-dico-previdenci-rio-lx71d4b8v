@@ -26,7 +26,12 @@ interface LeadStore {
   setCurrentPipelineId: (id: string | null) => void
   fetchLeads: () => Promise<void>
   fetchTaskAutomations: () => Promise<void>
-  addTaskAutomation: (stage: string, taskTitle: string) => Promise<void>
+  addTaskAutomation: (
+    stage: string,
+    taskTitle: string,
+    taskDescription?: string,
+    dueDaysOffset?: number,
+  ) => Promise<void>
   deleteTaskAutomation: (id: string) => Promise<void>
   moveLead: (id: string, to: Stage, r?: string, tags?: string[], tasks?: TaskTemplate[]) => void
   addLead: (lead: Lead) => void
@@ -143,6 +148,8 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
             userId: d.user_id,
             stage: d.stage,
             taskTitle: d.task_title,
+            taskDescription: d.task_description,
+            dueDaysOffset: d.due_days_offset,
             createdAt: d.created_at,
           })),
         )
@@ -178,13 +185,20 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     if (Object.keys(map).length > 0) await supabase.from('leads').update(map).eq('id', id)
   }
 
-  const addTaskAutomation = async (stage: string, taskTitle: string) => {
+  const addTaskAutomation = async (
+    stage: string,
+    taskTitle: string,
+    taskDescription?: string,
+    dueDaysOffset?: number,
+  ) => {
     if (!user) return
     const newAuto = {
       id: crypto.randomUUID(),
       user_id: user.id,
       stage,
       task_title: taskTitle,
+      task_description: taskDescription || null,
+      due_days_offset: dueDaysOffset ?? null,
       created_at: new Date().toISOString(),
     }
     const parsedNewAuto = {
@@ -192,10 +206,12 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
       userId: newAuto.user_id,
       stage: newAuto.stage,
       taskTitle: newAuto.task_title,
+      taskDescription: newAuto.task_description || undefined,
+      dueDaysOffset: newAuto.due_days_offset ?? undefined,
       createdAt: newAuto.created_at,
     }
     setTaskAutomations((p) => [...p, parsedNewAuto])
-    const { error } = await supabase.from('task_automations').insert(newAuto)
+    const { error } = await supabase.from('task_automations').insert(newAuto as any)
     if (error) {
       setTaskAutomations((p) => p.filter((a) => a.id !== newAuto.id))
       toast.error('Erro ao salvar automação.')
@@ -267,13 +283,22 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
           createdAt: new Date().toISOString(),
         }))
 
-        const addedFromAutomations = stageAutomations.map((a) => ({
-          id: crypto.randomUUID(),
-          title: a.taskTitle,
-          description: 'Criado via automação de etapa',
-          completed: false,
-          createdAt: new Date().toISOString(),
-        }))
+        const addedFromAutomations = stageAutomations.map((a) => {
+          let dueDate
+          if (a.dueDaysOffset !== undefined && a.dueDaysOffset !== null) {
+            const date = new Date()
+            date.setDate(date.getDate() + a.dueDaysOffset)
+            dueDate = date.toISOString()
+          }
+          return {
+            id: crypto.randomUUID(),
+            title: a.taskTitle,
+            description: a.taskDescription || 'Criado via automação de etapa',
+            completed: false,
+            createdAt: new Date().toISOString(),
+            dueDate,
+          }
+        })
 
         const allNewTasks = [...added, ...addedFromAutomations]
 
