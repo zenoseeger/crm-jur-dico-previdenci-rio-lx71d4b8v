@@ -121,7 +121,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
     if (direction === 'outbound' && config?.provider === 'z-api') {
       if (!config.instance_id || !config.token || !config.client_token) {
         toast.error(
-          'Configuração do WhatsApp incompleta. Verifique Instance ID, Token e Client Token na aba de Administração para evitar erros.',
+          'Configuração do WhatsApp incompleta. Verifique Instance ID, Token e Client Token na aba de Administração.',
         )
         return
       }
@@ -138,7 +138,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
               'Content-Type': 'application/json',
               'Client-Token': config.client_token.trim(),
             },
-            // Payload Sanitization: send pure cleanText, without any hardcoded trial/debug strings
+            // Payload Sanitization: send pure cleanText exactly as provided by the user
             body: JSON.stringify({ phone: formattedPhone, message: cleanText }),
           },
         )
@@ -207,8 +207,8 @@ export function ChatTab({ lead }: { lead: Lead }) {
             {lead.name.charAt(0)}
           </div>
           <div>
-            <p className="text-sm font-semibold">{lead.name}</p>
-            <p className="text-xs text-muted-foreground">{lead.phone}</p>
+            <div className="text-sm font-semibold">{lead.name}</div>
+            <div className="text-xs text-muted-foreground">{lead.phone}</div>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -306,7 +306,10 @@ export function ChatTab({ lead }: { lead: Lead }) {
                       Ver anexo ({msg.message_type})
                     </a>
                   ) : null}
-                  <p className="leading-relaxed whitespace-pre-wrap">{displayText}</p>
+                  {/* Changed <p> to <div> to avoid theoretical React hydration/runtime nesting errors with external HTML */}
+                  <div className="leading-relaxed whitespace-pre-wrap break-words">
+                    {displayText}
+                  </div>
                   <div
                     className={cn(
                       'text-[9px] mt-1 text-right',

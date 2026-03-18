@@ -41,8 +41,9 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    // Clean exact content extraction mapping the user input
     let content = '[Mensagem/Mídia]'
-    if (payload.text?.message) content = payload.text.message
+    if (payload.text?.message) content = payload.text.message.trim()
     else if (payload.audio) content = '[Áudio recebido]'
     else if (payload.video) content = payload.video.caption || '[Vídeo recebido]'
     else if (payload.image) content = payload.image.caption || '[Imagem recebida]'

@@ -69,7 +69,7 @@ export function TasksTab({ lead }: { lead: Lead }) {
     <div className="space-y-6">
       <form onSubmit={handleAdd} className="space-y-3 p-4 border rounded-lg bg-card/50 shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-          <h4 className="text-sm font-medium">Nova Tarefa</h4>
+          <div className="text-sm font-medium">Nova Tarefa</div>
           <Button
             type="button"
             variant="outline"
@@ -139,7 +139,7 @@ export function TasksTab({ lead }: { lead: Lead }) {
       {tasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-32 text-muted-foreground space-y-2">
           <CheckCircle2 className="w-8 h-8 opacity-20" />
-          <p className="text-sm">Nenhuma tarefa pendente.</p>
+          <div className="text-sm">Nenhuma tarefa pendente.</div>
         </div>
       ) : (
         <div className="space-y-3 pb-8">
@@ -161,26 +161,26 @@ export function TasksTab({ lead }: { lead: Lead }) {
                 />
                 <div className="flex-1 space-y-1">
                   <div className="flex items-start justify-between gap-2">
-                    <p
+                    <div
                       className={cn(
                         'text-sm font-medium transition-colors',
                         task.completed ? 'line-through text-muted-foreground' : 'text-foreground',
                       )}
                     >
                       {task.title}
-                    </p>
+                    </div>
                     {isOverdue && <Clock className="w-4 h-4 text-destructive shrink-0" />}
                   </div>
 
                   {task.description && (
-                    <p
+                    <div
                       className={cn(
                         'text-xs leading-relaxed whitespace-pre-wrap mt-1',
                         task.completed ? 'text-muted-foreground/60' : 'text-muted-foreground',
                       )}
                     >
                       {task.description}
-                    </p>
+                    </div>
                   )}
 
                   {task.dueDate && (
