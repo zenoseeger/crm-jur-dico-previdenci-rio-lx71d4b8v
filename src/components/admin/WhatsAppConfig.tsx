@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import {
   Select,
   SelectContent,
@@ -21,7 +22,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Copy, Loader2, Save, CheckCircle2, XCircle, QrCode, LogOut } from 'lucide-react'
+import {
+  Copy,
+  Loader2,
+  Save,
+  CheckCircle2,
+  XCircle,
+  QrCode,
+  LogOut,
+  AlertCircle,
+} from 'lucide-react'
 import { toast } from 'sonner'
 
 const DEFAULT_INSTANCE_ID = '3F04FD79EF154102370DEE37F1774CBC'
@@ -156,6 +166,23 @@ export function WhatsAppConfig() {
     setQrImage(null)
 
     try {
+      const statusRes = await fetch(
+        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
+      )
+      if (statusRes.ok) {
+        const statusData = await statusRes.json()
+        if (statusData.connected) {
+          setConnectionStatus('connected')
+          setQrModalOpen(false)
+          toast.info('A instância já está conectada.')
+          return
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao verificar status antes de conectar', err)
+    }
+
+    try {
       const res = await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/qr-code/image`,
       )
@@ -166,6 +193,22 @@ export function WhatsAppConfig() {
         } else {
           setQrError('A API não retornou a imagem do QR Code.')
         }
+      } else if (res.status === 400) {
+        const checkRes = await fetch(
+          `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
+        )
+        if (checkRes.ok) {
+          const checkData = await checkRes.json()
+          if (checkData.connected) {
+            setConnectionStatus('connected')
+            setQrModalOpen(false)
+            toast.info('A instância já estava conectada.')
+            return
+          }
+        }
+        setQrError(
+          'Não foi possível gerar o QR Code. Por favor, verifique se a sua instância na Z-api está ativa.',
+        )
       } else {
         setQrError(`Erro ao buscar QR Code: HTTP ${res.status}`)
       }
@@ -181,13 +224,22 @@ export function WhatsAppConfig() {
 
     try {
       const res = await fetch(
-        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/disconnect`,
+        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/disconnect-account`,
+        { method: 'POST' },
       )
       if (res.ok) {
         toast.success('Instância desconectada com sucesso!')
         setConnectionStatus('disconnected')
       } else {
-        toast.error('Erro ao desconectar instância na Z-api.')
+        const fallbackRes = await fetch(
+          `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/disconnect`,
+        )
+        if (fallbackRes.ok) {
+          toast.success('Instância desconectada com sucesso!')
+          setConnectionStatus('disconnected')
+        } else {
+          toast.error('Erro ao desconectar instância na Z-api.')
+        }
       }
     } catch (error) {
       console.error(error)
@@ -298,7 +350,7 @@ export function WhatsAppConfig() {
                     className="text-destructive border-destructive hover:bg-destructive/10 flex-1 sm:flex-none"
                     onClick={handleDisconnect}
                   >
-                    <LogOut className="w-4 h-4 mr-2" /> Desconectar WhatsApp
+                    <LogOut className="w-4 h-4 mr-2" /> Desconectar
                   </Button>
                 ) : (
                   <Button
@@ -368,9 +420,17 @@ export function WhatsAppConfig() {
                 <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
               </div>
             ) : qrError ? (
-              <div className="text-center space-y-4">
-                <p className="text-sm text-destructive">{qrError}</p>
-                <Button variant="outline" onClick={handleConnect}>
+              <div className="text-center space-y-4 w-full">
+                <Alert
+                  variant="destructive"
+                  className="text-left bg-destructive/5 border-destructive/20 text-destructive"
+                >
+                  <AlertTitle className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" /> Falha na Conexão
+                  </AlertTitle>
+                  <AlertDescription>{qrError}</AlertDescription>
+                </Alert>
+                <Button variant="outline" onClick={handleConnect} className="w-full">
                   Tentar Novamente
                 </Button>
               </div>
