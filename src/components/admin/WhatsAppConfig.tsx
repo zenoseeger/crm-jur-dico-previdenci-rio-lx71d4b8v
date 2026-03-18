@@ -175,6 +175,7 @@ export function WhatsAppConfig() {
               config={config}
               onTestWebhook={actions.handleTestWebhook}
               onReset={actions.handleReset}
+              isTestingWebhook={actions.isTestingWebhook}
             />
           </TabsContent>
         </Tabs>

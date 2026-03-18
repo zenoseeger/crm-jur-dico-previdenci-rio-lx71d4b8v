@@ -9,6 +9,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
   const [qrImage, setQrImage] = useState<string | null>(null)
   const [qrError, setQrError] = useState<string | null>(null)
   const [requiresReset, setRequiresReset] = useState(false)
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false)
 
   const updateDbStatus = async (status: string, lastError: string | null = null) => {
     if (!config.id) return
@@ -66,9 +67,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
         let errorBody = {}
         try {
           errorBody = await res.json()
-        } catch (e) {
-          // Ignore parsing errors for empty or non-JSON bodies
-        }
+        } catch (e) {}
 
         const errorMessage =
           (errorBody as any).error || (errorBody as any).message || `Erro HTTP ${res.status}`
@@ -138,46 +137,131 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
   }
 
   const handleTestWebhook = async () => {
+    if (!config.instance_id || !config.token) {
+      toast.error('Configuração incompleta: Instance ID ou Token ausente.')
+      return
+    }
+
+    setIsTestingWebhook(true)
     const baseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bnuripqdjxiympxhlthy.supabase.co'
     const webhookUrl = `${baseUrl}/functions/v1/zapi-webhook`
 
     try {
-      const res = await fetch(
-        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/update-webhook-delivery`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ value: webhookUrl }),
-        },
+      const statusRes = await fetch(
+        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
       )
-      if (res.ok) {
-        const now = new Date().toISOString()
-        await supabase
-          .from('whatsapp_configs')
-          .update({ webhook_verified_at: now, status: 'connected', last_error: null })
-          .eq('id', config.id)
-        setConfig((p: any) => ({
-          ...p,
-          webhook_verified_at: now,
-          status: 'connected',
-          last_error: null,
-        }))
+
+      let statusData: any = {}
+      try {
+        statusData = await statusRes.json()
+      } catch (e) {}
+
+      if (!statusRes.ok) {
+        let errMsg = 'Erro desconhecido na Z-api.'
+        if (statusRes.status === 401 || statusRes.status === 403) {
+          errMsg = 'Falha na Autenticação: Verifique o Token da Z-api.'
+        } else if (statusRes.status === 404) {
+          errMsg = 'Instância não encontrada: Verifique o Instance ID.'
+        } else if (statusRes.status === 400) {
+          errMsg = statusData.error || statusData.message || 'Erro na requisição (400).'
+        } else {
+          errMsg = statusData.error || `HTTP Erro ${statusRes.status}`
+        }
+
+        toast.error(errMsg)
+        await updateDbStatus('error', errMsg)
         await logWhatsAppEvent(
           user.id,
-          'WEBHOOK_VERIFIED',
-          'Webhook testado e configurado com sucesso na Z-api.',
+          'webhook_health_check',
+          `Falha de conectividade: ${errMsg}`,
+          { status: statusRes.status, body: statusData },
         )
-        toast.success('Webhook verificado e configurado com sucesso!')
-      } else {
-        const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.message || `HTTP ${res.status}`)
+        setIsTestingWebhook(false)
+        return
       }
+
+      let currentWebhook = ''
+      try {
+        const getWebhookRes = await fetch(
+          `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/webhook-delivery`,
+        )
+        if (getWebhookRes.ok) {
+          const whData = await getWebhookRes.json()
+          currentWebhook = whData.value
+        }
+      } catch (e) {}
+
+      let webhookData: any = { status: 'already_matched' }
+      let webhookConfigured = false
+
+      if (currentWebhook !== webhookUrl) {
+        const webhookRes = await fetch(
+          `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/update-webhook-delivery`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: webhookUrl }),
+          },
+        )
+
+        try {
+          webhookData = await webhookRes.json()
+        } catch (e) {}
+
+        if (!webhookRes.ok) {
+          const errMsg =
+            webhookData.error ||
+            webhookData.message ||
+            `Erro HTTP ${webhookRes.status} ao configurar webhook.`
+          toast.error(`Falha ao configurar webhook: ${errMsg}`)
+          await updateDbStatus('error', `Falha no Webhook: ${errMsg}`)
+          await logWhatsAppEvent(
+            user.id,
+            'webhook_health_check',
+            `Falha de configuração de webhook: ${errMsg}`,
+            { status: webhookRes.status, body: webhookData },
+          )
+          setIsTestingWebhook(false)
+          return
+        }
+        webhookConfigured = true
+      }
+
+      const now = new Date().toISOString()
+      await supabase
+        .from('whatsapp_configs')
+        .update({ webhook_verified_at: now, status: 'connected', last_error: null })
+        .eq('id', config.id)
+
+      setConfig((p: any) => ({
+        ...p,
+        webhook_verified_at: now,
+        status: 'connected',
+        last_error: null,
+      }))
+
+      await logWhatsAppEvent(
+        user.id,
+        'webhook_health_check',
+        webhookConfigured
+          ? 'Webhook verificado e atualizado com sucesso!'
+          : 'Webhook verificado com sucesso! URL já estava correta.',
+        {
+          statusData,
+          webhookData,
+          configuredUrl: webhookUrl,
+          previousUrl: currentWebhook,
+        },
+      )
+      toast.success('Webhook verificado com sucesso!')
     } catch (error: any) {
-      toast.error('Falha ao testar webhook.')
-      await updateDbStatus('error', `Falha no Webhook: ${error.message}`)
-      await logWhatsAppEvent(user.id, 'connection_error', 'Falha ao testar Webhook', {
+      toast.error('Erro de rede ao testar webhook.')
+      await updateDbStatus('error', `Falha de rede: ${error.message}`)
+      await logWhatsAppEvent(user.id, 'webhook_health_check', 'Erro de rede durante health check', {
         error: error.message,
       })
+    } finally {
+      setIsTestingWebhook(false)
     }
   }
 
@@ -188,6 +272,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
     qrImage,
     qrError,
     requiresReset,
+    isTestingWebhook,
     handleConnect,
     handleDisconnect,
     handleReset,

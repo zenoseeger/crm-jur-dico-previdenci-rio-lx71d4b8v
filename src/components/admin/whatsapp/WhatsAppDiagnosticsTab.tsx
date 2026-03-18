@@ -1,16 +1,23 @@
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Activity, RefreshCw } from 'lucide-react'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { Activity, RefreshCw, Loader2, AlertCircle } from 'lucide-react'
 import { WhatsAppLogs } from './WhatsAppLogs'
 
 interface DiagnosticsTabProps {
   config: any
   onTestWebhook: () => void
   onReset: () => void
+  isTestingWebhook: boolean
 }
 
-export function WhatsAppDiagnosticsTab({ config, onTestWebhook, onReset }: DiagnosticsTabProps) {
+export function WhatsAppDiagnosticsTab({
+  config,
+  onTestWebhook,
+  onReset,
+  isTestingWebhook,
+}: DiagnosticsTabProps) {
   return (
     <div className="space-y-6 pt-6 animate-fade-in px-6 pb-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -22,6 +29,19 @@ export function WhatsAppDiagnosticsTab({ config, onTestWebhook, onReset }: Diagn
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {config.status === 'error' && config.last_error && (
+              <Alert
+                variant="destructive"
+                className="mb-4 bg-destructive/10 text-destructive border-destructive/20"
+              >
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Falha de Conexão Detetada</AlertTitle>
+                <AlertDescription className="text-xs mt-1 font-medium">
+                  {config.last_error}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="mb-4">
               <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
                 Última verificação bem sucedida:
@@ -36,9 +56,14 @@ export function WhatsAppDiagnosticsTab({ config, onTestWebhook, onReset }: Diagn
               onClick={onTestWebhook}
               variant="secondary"
               className="w-full"
-              disabled={!config.instance_id}
+              disabled={!config.instance_id || isTestingWebhook}
             >
-              <Activity className="w-4 h-4 mr-2" /> Testar Comunicação
+              {isTestingWebhook ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Activity className="w-4 h-4 mr-2" />
+              )}
+              {isTestingWebhook ? 'Verificando...' : 'Testar Comunicação'}
             </Button>
           </CardContent>
         </Card>
