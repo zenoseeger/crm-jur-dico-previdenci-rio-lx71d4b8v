@@ -20,10 +20,30 @@ import { toast } from 'sonner'
 
 export function SummaryTab({ lead }: { lead: Lead }) {
   const { tags: adminTags } = useAdminStore()
-  const { addTagToLead } = useLeadStore()
+  const { addTagToLead, updateLeadNotes } = useLeadStore()
   const [open, setOpen] = useState(false)
+  const [notes, setNotes] = useState(lead.notes || '')
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    setNotes(lead.notes || '')
+  }, [lead.id, lead.notes])
+
+  const handleSaveNotes = async () => {
+    setIsSaving(true)
+    try {
+      await updateLeadNotes(lead.id, notes)
+      toast.success('Notas salvas com sucesso!')
+    } catch (err) {
+      toast.error('Erro ao salvar notas. Tente novamente.')
+      console.error(err)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const unselectedTags = adminTags.filter((t) => !lead.tags.includes(t.name))
+  const hasUnsavedChanges = notes !== (lead.notes || '')
 
   return (
     <div className="space-y-6">
@@ -49,21 +69,24 @@ export function SummaryTab({ lead }: { lead: Lead }) {
       <Separator />
 
       <div className="space-y-3">
-        <h4 className="text-sm font-semibold flex items-center gap-2">
-          <AlignLeft className="w-4 h-4 text-muted-foreground" />
-          Notas de Qualificação
-        </h4>
-        {lead.notes ? (
-          <div className="p-3.5 bg-muted/30 rounded-lg border border-border/50 text-sm text-foreground whitespace-pre-wrap leading-relaxed shadow-sm">
-            {lead.notes}
-          </div>
-        ) : (
-          <div className="p-4 border border-dashed rounded-lg bg-muted/20 text-center">
-            <p className="text-sm text-muted-foreground">
-              Nenhuma nota de qualificação registrada.
-            </p>
-          </div>
-        )}
+        <div className="flex flex-row justify-between items-center">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <AlignLeft className="w-4 h-4 text-muted-foreground" />
+            Notas de Qualificação
+          </h4>
+          {hasUnsavedChanges && (
+            <Button onClick={handleSaveNotes} disabled={isSaving} size="sm" className="h-7 text-xs">
+              {isSaving && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+              Salvar Notas
+            </Button>
+          )}
+        </div>
+        <textarea
+          className="w-full min-h-[150px] p-3 text-sm rounded-md border bg-muted/30 focus:bg-background focus:ring-2 ring-primary outline-none transition-all resize-none shadow-sm"
+          placeholder="Escreva aqui suas observações sobre este lead..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
       </div>
 
       <Separator />
@@ -143,27 +166,6 @@ export function SummaryTab({ lead }: { lead: Lead }) {
 }
 
 export function QualTab({ lead }: { lead: Lead }) {
-  const { updateLeadNotes } = useLeadStore()
-  const [notes, setNotes] = useState(lead.notes || '')
-  const [isSaving, setIsSaving] = useState(false)
-
-  useEffect(() => {
-    setNotes(lead.notes || '')
-  }, [lead.id, lead.notes])
-
-  const handleSaveNotes = async () => {
-    setIsSaving(true)
-    try {
-      await updateLeadNotes(lead.id, notes)
-      toast.success('Notas salvas com sucesso!')
-    } catch (err) {
-      toast.error('Erro ao salvar notas. Tente novamente.')
-      console.error(err)
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="bg-card border rounded-lg p-4 space-y-4 shadow-sm">
@@ -186,20 +188,6 @@ export function QualTab({ lead }: { lead: Lead }) {
             <span className="font-medium text-destructive">Negado em 2022</span>
           </div>
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <h4 className="font-semibold text-sm">Notas do Lead</h4>
-        <textarea
-          className="w-full min-h-[150px] p-3 text-sm rounded-md border bg-muted/30 focus:bg-background focus:ring-2 ring-primary outline-none transition-all resize-none"
-          placeholder="Escreva aqui suas observações sobre este lead..."
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-        <Button onClick={handleSaveNotes} disabled={isSaving} size="sm">
-          {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          Salvar Notas
-        </Button>
       </div>
     </div>
   )
