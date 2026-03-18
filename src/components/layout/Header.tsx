@@ -1,4 +1,14 @@
-import { Bell, Search, UserCircle, User as UserIcon, LogOut, Plus } from 'lucide-react'
+import {
+  Bell,
+  Search,
+  UserCircle,
+  User as UserIcon,
+  LogOut,
+  Plus,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+} from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -6,6 +16,8 @@ import useLeadStore from '@/stores/useLeadStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { LogoutConfirm } from '@/components/auth/LogoutConfirm'
 import { NewLeadDialog } from '@/components/kanban/NewLeadDialog'
+import { useWhatsAppStatus } from '@/hooks/use-whatsapp-status'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +30,7 @@ import {
 export function Header() {
   const { searchQuery, setSearchQuery } = useLeadStore()
   const { user } = useAuthStore()
+  const waStatus = useWhatsAppStatus()
 
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-20">
@@ -35,6 +48,40 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        <div className="hidden md:flex items-center mr-2" title="Status do WhatsApp Integrado">
+          <div
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors',
+              waStatus === 'connected'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                : waStatus === 'error'
+                  ? 'bg-destructive/10 border-destructive/20 text-destructive'
+                  : waStatus === 'checking'
+                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-600'
+                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500',
+            )}
+          >
+            {waStatus === 'connected' ? (
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            ) : waStatus === 'error' ? (
+              <AlertCircle className="w-3.5 h-3.5" />
+            ) : waStatus === 'checking' ? (
+              <AlertCircle className="w-3.5 h-3.5 opacity-50" />
+            ) : (
+              <XCircle className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {waStatus === 'connected'
+                ? 'WA Ativo'
+                : waStatus === 'error'
+                  ? 'WA Erro'
+                  : waStatus === 'checking'
+                    ? '...'
+                    : 'WA Offline'}
+            </span>
+          </div>
+        </div>
+
         <NewLeadDialog>
           <Button size="sm" className="h-9">
             <Plus className="w-4 h-4 sm:mr-2" />

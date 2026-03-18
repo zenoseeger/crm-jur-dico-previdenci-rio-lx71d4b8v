@@ -1,55 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
-import { DbWhatsAppConfig } from '@/types'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
-import {
-  Copy,
-  Loader2,
-  Save,
-  CheckCircle2,
-  XCircle,
-  QrCode,
-  LogOut,
-  AlertCircle,
-} from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { logWhatsAppEvent } from '@/lib/whatsapp-logger'
+import { useWhatsAppActions } from '@/hooks/use-whatsapp-actions'
 
-const DEFAULT_INSTANCE_ID = '3F04FD79EF154102370DEE37F1774CBC'
-const DEFAULT_TOKEN = '194683CEB3DC29A1249EC368'
+import { WhatsAppConnectionTab } from './whatsapp/WhatsAppConnectionTab'
+import { WhatsAppDiagnosticsTab } from './whatsapp/WhatsAppDiagnosticsTab'
+import { WhatsAppQRDialog } from './whatsapp/WhatsAppQRDialog'
 
 export function WhatsAppConfig() {
   const { user } = useAuth()
-  const [config, setConfig] = useState<Partial<DbWhatsAppConfig>>({ provider: 'none' })
+  const [config, setConfig] = useState<any>({ provider: 'none', status: 'disconnected' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const [connectionStatus, setConnectionStatus] = useState<
-    'connected' | 'disconnected' | 'checking'
-  >('checking')
-  const [qrModalOpen, setQrModalOpen] = useState(false)
-  const [qrImage, setQrImage] = useState<string | null>(null)
-  const [qrLoading, setQrLoading] = useState(false)
-  const [qrError, setQrError] = useState<string | null>(null)
+  const actions = useWhatsAppActions(config, setConfig, user)
 
   useEffect(() => {
     if (!user) return
@@ -59,83 +29,55 @@ export function WhatsAppConfig() {
         .select('*')
         .eq('user_id', user.id)
         .single()
-
-      if (data) {
-        setConfig(data)
-      } else {
-        setConfig({
-          provider: 'none',
-          instance_id: DEFAULT_INSTANCE_ID,
-          token: DEFAULT_TOKEN,
-          client_token: '',
-        })
-      }
+      if (data) setConfig(data)
       setLoading(false)
     }
     fetchConfig()
   }, [user])
 
   const checkStatus = useCallback(async () => {
-    if (config.provider !== 'z-api' || !config.instance_id || !config.token) {
-      setConnectionStatus('disconnected')
-      return
-    }
-
+    if (config.provider !== 'z-api' || !config.instance_id || !config.token) return
     try {
       const res = await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
       )
       if (res.ok) {
         const data = await res.json()
-        if (data.connected) {
-          setConnectionStatus('connected')
-        } else {
-          setConnectionStatus('disconnected')
+        const newStatus = data.connected ? 'connected' : 'disconnected'
+        if (newStatus !== config.status) {
+          actions.updateDbStatus(newStatus, null)
+          if (newStatus === 'connected') {
+            await logWhatsAppEvent(
+              user!.id,
+              'STATUS_CHANGE',
+              'WhatsApp conectado e reconhecido via polling.',
+            )
+          }
         }
-      } else {
-        setConnectionStatus('disconnected')
       }
     } catch (error) {
-      console.error('Falha ao verificar status do Z-api', error)
+      // Ignorar erros de polling de rede
     }
-  }, [config.provider, config.instance_id, config.token])
+  }, [config, actions, user])
 
   useEffect(() => {
-    if (!loading && config.provider === 'z-api' && config.instance_id && config.token) {
+    if (!loading && config.provider === 'z-api') {
       checkStatus()
-      const interval = setInterval(checkStatus, qrModalOpen ? 3000 : 15000)
+      const interval = setInterval(checkStatus, actions.qrModalOpen ? 4000 : 20000)
       return () => clearInterval(interval)
-    } else if (!loading) {
-      setConnectionStatus('disconnected')
     }
-  }, [checkStatus, loading, config.provider, config.instance_id, config.token, qrModalOpen])
-
-  useEffect(() => {
-    if (connectionStatus === 'connected' && qrModalOpen) {
-      setQrModalOpen(false)
-      toast.success('WhatsApp conectado com sucesso!')
-    }
-  }, [connectionStatus, qrModalOpen])
-
-  const handleProviderChange = (v: 'none' | 'z-api') => {
-    setConfig((prev) => ({
-      ...prev,
-      provider: v,
-      instance_id: prev.instance_id || (v === 'z-api' ? DEFAULT_INSTANCE_ID : ''),
-      token: prev.token || (v === 'z-api' ? DEFAULT_TOKEN : ''),
-    }))
-  }
+  }, [checkStatus, loading, config.provider, actions.qrModalOpen])
 
   const handleSave = async () => {
     if (!user) return
     setSaving(true)
-
     const payload: any = {
       user_id: user.id,
       provider: config.provider,
       instance_id: config.instance_id,
       token: config.token,
       client_token: config.client_token,
+      status: config.status || 'disconnected',
     }
     if (config.id) payload.id = config.id
 
@@ -150,118 +92,14 @@ export function WhatsAppConfig() {
     } else {
       toast.success('Configurações salvas com sucesso!')
       if (data) setConfig(data)
+      await logWhatsAppEvent(user.id, 'CONFIG_UPDATED', 'Configurações de integração atualizadas.')
     }
     setSaving(false)
   }
 
-  const handleConnect = async () => {
-    if (!config.instance_id || !config.token) {
-      toast.error('Informe o ID e o Token da instância primeiro.')
-      return
-    }
-
-    setQrModalOpen(true)
-    setQrLoading(true)
-    setQrError(null)
-    setQrImage(null)
-
-    // Pre-Connection Instance Validation
-    try {
-      const statusRes = await fetch(
-        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
-      )
-
-      if (statusRes.ok) {
-        const statusData = await statusRes.json()
-        if (statusData.connected) {
-          setConnectionStatus('connected')
-          setQrModalOpen(false)
-          toast.info('A instância já está conectada.')
-          setQrLoading(false)
-          return
-        }
-      } else {
-        if (statusRes.status === 401 || statusRes.status === 403) {
-          setQrError('Token ou Instance ID inválidos. Verifique suas credenciais.')
-          setQrLoading(false)
-          return
-        } else if (statusRes.status === 404) {
-          setQrError('Instância não encontrada na Z-api.')
-          setQrLoading(false)
-          return
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao verificar status antes de conectar', err)
-      setQrError('Erro de rede ao verificar o status da instância.')
-      setQrLoading(false)
-      return
-    }
-
-    try {
-      const res = await fetch(
-        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/qr-code/image`,
-      )
-
-      if (res.ok) {
-        const data = await res.json()
-        if (data.value) {
-          setQrImage(data.value)
-        } else {
-          setQrError('A API não retornou a imagem do QR Code.')
-        }
-      } else if (res.status === 400) {
-        setQrError(
-          'Não foi possível gerar o QR Code. Por favor, verifique se a sua instância na Z-api está ativa.',
-        )
-      } else if (res.status === 401 || res.status === 403) {
-        setQrError('Token ou Instance ID inválidos. Verifique suas credenciais.')
-      } else if (res.status === 404) {
-        setQrError('Instância não encontrada na Z-api.')
-      } else {
-        setQrError(`Erro ao buscar QR Code: HTTP ${res.status}`)
-      }
-    } catch (error: any) {
-      setQrError('Erro de rede ao comunicar com Z-api.')
-    } finally {
-      setQrLoading(false)
-    }
-  }
-
-  const handleDisconnect = async () => {
-    if (!config.instance_id || !config.token) return
-
-    try {
-      const res = await fetch(
-        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/disconnect-account`,
-        { method: 'POST' },
-      )
-      if (res.ok) {
-        toast.success('Instância desconectada com sucesso!')
-        setConnectionStatus('disconnected')
-      } else {
-        const fallbackRes = await fetch(
-          `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/disconnect`,
-        )
-        if (fallbackRes.ok) {
-          toast.success('Instância desconectada com sucesso!')
-          setConnectionStatus('disconnected')
-        } else {
-          toast.error('Erro ao desconectar instância na Z-api.')
-        }
-      }
-    } catch (error) {
-      console.error(error)
-      toast.error('Erro de rede ao desconectar instância.')
-    }
-  }
-
-  const baseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bnuripqdjxiympxhlthy.supabase.co'
-  const webhookUrl = `${baseUrl}/functions/v1/zapi-webhook`
-
   if (loading) {
     return (
-      <Card className="border-slate-200 dark:border-slate-800 shadow-sm max-w-3xl flex items-center justify-center p-12">
+      <Card className="border-slate-200 dark:border-slate-800 shadow-sm max-w-4xl flex items-center justify-center p-12">
         <Loader2 className="animate-spin text-primary w-8 h-8" />
       </Card>
     )
@@ -269,26 +107,28 @@ export function WhatsAppConfig() {
 
   return (
     <>
-      <Card className="border-slate-200 dark:border-slate-800 shadow-sm max-w-3xl">
-        <CardHeader>
+      <Card className="border-slate-200 dark:border-slate-800 shadow-sm max-w-4xl">
+        <CardHeader className="border-b border-border/50 pb-4 mb-2">
           <div className="flex items-center justify-between mb-1">
             <CardTitle>Integração Z-api</CardTitle>
             {config.provider === 'z-api' && (
               <Badge
-                variant={connectionStatus === 'connected' ? 'default' : 'secondary'}
+                variant="outline"
                 className={
-                  connectionStatus === 'connected'
-                    ? 'bg-emerald-500 hover:bg-emerald-600 gap-1.5'
-                    : 'gap-1.5 text-muted-foreground'
+                  config.status === 'connected'
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 gap-1.5'
+                    : config.status === 'error'
+                      ? 'bg-destructive/10 border-destructive/20 text-destructive gap-1.5'
+                      : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-muted-foreground gap-1.5'
                 }
               >
-                {connectionStatus === 'checking' ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Verificando...
-                  </>
-                ) : connectionStatus === 'connected' ? (
+                {config.status === 'connected' ? (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" /> Conectado
+                  </>
+                ) : config.status === 'error' ? (
+                  <>
+                    <AlertCircle className="w-3.5 h-3.5" /> Erro
                   </>
                 ) : (
                   <>
@@ -299,165 +139,52 @@ export function WhatsAppConfig() {
             )}
           </div>
           <CardDescription>
-            Configure o provedor para habilitar o envio e recebimento de mensagens, além do uso de
-            IA pelo WhatsApp.
+            Gerencie o provedor de disparo e acompanhe a saúde da conexão.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label className="text-base font-semibold">Provedor de Conexão</Label>
-            <Select
-              value={config.provider}
-              onValueChange={(v: 'none' | 'z-api') => handleProviderChange(v)}
-            >
-              <SelectTrigger className="w-[300px]">
-                <SelectValue placeholder="Selecione o provedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nenhum (Desconectado)</SelectItem>
-                <SelectItem value="z-api">Z-api</SelectItem>
-              </SelectContent>
-            </Select>
+
+        <Tabs defaultValue="connection" className="w-full">
+          <div className="px-6 pt-2">
+            <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+              <TabsTrigger value="connection">Configuração</TabsTrigger>
+              <TabsTrigger value="diagnostics">Diagnósticos & Logs</TabsTrigger>
+            </TabsList>
           </div>
 
-          {config.provider === 'z-api' && (
-            <div className="space-y-5 animate-fade-in border-t border-border pt-5">
-              <div className="space-y-2">
-                <Label>ID da instância (Instance ID)</Label>
-                <Input
-                  placeholder="Ex: 3F04FD79EF154102370DEE37F1774CBC"
-                  value={config.instance_id || ''}
-                  onChange={(e) => setConfig({ ...config, instance_id: e.target.value })}
-                />
-              </div>
+          <TabsContent value="connection" className="m-0 focus-visible:outline-none">
+            <WhatsAppConnectionTab
+              config={config}
+              setConfig={setConfig}
+              onSave={handleSave}
+              saving={saving}
+              onConnect={actions.handleConnect}
+              onDisconnect={actions.handleDisconnect}
+            />
+          </TabsContent>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <Label>Token da instância</Label>
-                  <Input
-                    type="password"
-                    placeholder="Ex: 194683CEB3DC29A1249EC368"
-                    value={config.token || ''}
-                    onChange={(e) => setConfig({ ...config, token: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Client Token (Segurança)</Label>
-                  <Input
-                    type="password"
-                    placeholder="Seu Client Token (opcional/recomendado)"
-                    value={config.client_token || ''}
-                    onChange={(e) => setConfig({ ...config, client_token: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                {connectionStatus === 'connected' ? (
-                  <Button
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10 flex-1 sm:flex-none"
-                    onClick={handleDisconnect}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" /> Desconectar
-                  </Button>
-                ) : (
-                  <Button
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 sm:flex-none"
-                    onClick={handleConnect}
-                    disabled={!config.instance_id || !config.token}
-                  >
-                    <QrCode className="w-4 h-4 mr-2" /> Conectar WhatsApp
-                  </Button>
-                )}
-              </div>
-
-              <div className="space-y-2 bg-muted/30 p-4 rounded-xl border">
-                <h4 className="text-sm font-semibold">Configuração de Webhook (Z-api Panel)</h4>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Copie a URL abaixo e cole no painel do Z-api em "Webhooks" (Eventos de Mensagem
-                  Recebida) para que o CRM receba as respostas dos leads.
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    readOnly
-                    value={webhookUrl}
-                    className="bg-background font-mono text-xs text-primary/80 flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      navigator.clipboard.writeText(webhookUrl)
-                      toast.success('Webhook URL copiada!')
-                    }}
-                    title="Copiar URL"
-                    className="shrink-0 bg-background"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="pt-4 border-t border-border flex justify-end">
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-slate-900 text-white gap-2 px-6"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Salvar Configurações
-            </Button>
-          </div>
-        </CardContent>
+          <TabsContent
+            value="diagnostics"
+            className="m-0 focus-visible:outline-none bg-slate-50 dark:bg-slate-900/20 rounded-b-lg"
+          >
+            <WhatsAppDiagnosticsTab
+              config={config}
+              onTestWebhook={actions.handleTestWebhook}
+              onReset={actions.handleReset}
+            />
+          </TabsContent>
+        </Tabs>
       </Card>
 
-      <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Conectar WhatsApp</DialogTitle>
-            <DialogDescription>
-              Escaneie o QR Code abaixo com o seu WhatsApp para conectar a instância Z-api.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center justify-center p-6 min-h-[300px]">
-            {qrLoading ? (
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
-              </div>
-            ) : qrError ? (
-              <div className="text-center space-y-6 w-full animate-in fade-in zoom-in-95 duration-200">
-                <Alert
-                  variant="destructive"
-                  className="text-left bg-destructive/5 border-destructive/20 text-destructive"
-                >
-                  <AlertTitle className="flex items-center gap-2 font-semibold text-base">
-                    <AlertCircle className="w-5 h-5" /> Falha na Conexão
-                  </AlertTitle>
-                  <AlertDescription className="text-destructive/90 text-sm mt-2">
-                    {qrError}
-                  </AlertDescription>
-                </Alert>
-                <Button variant="outline" onClick={handleConnect} className="w-full h-11">
-                  Tentar Novamente
-                </Button>
-              </div>
-            ) : qrImage ? (
-              <div className="space-y-6 flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                  <img src={qrImage} alt="QR Code" className="w-64 h-64 object-contain" />
-                </div>
-                <p className="text-sm text-muted-foreground animate-pulse flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Aguardando leitura...
-                </p>
-              </div>
-            ) : null}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <WhatsAppQRDialog
+        open={actions.qrModalOpen}
+        onOpenChange={actions.setQrModalOpen}
+        loading={actions.qrLoading}
+        error={actions.qrError}
+        image={actions.qrImage}
+        requiresReset={actions.requiresReset}
+        onConnectRetry={actions.handleConnect}
+        onReset={actions.handleReset}
+      />
     </>
   )
 }

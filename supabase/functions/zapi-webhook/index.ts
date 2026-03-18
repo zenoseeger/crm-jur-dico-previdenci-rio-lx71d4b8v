@@ -57,7 +57,15 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // 2. Encontrar o lead associado ao número de telefone
+    // 2. Registrar no log de diagnósticos (whatsapp_logs)
+    await supabase.from('whatsapp_logs').insert({
+      user_id: config.user_id,
+      event_type: 'WEBHOOK_RECEIVED',
+      message: `Mensagem recebida de ${phone}`,
+      details: payload,
+    })
+
+    // 3. Encontrar o lead associado ao número de telefone
     const { data: leads } = await supabase
       .from('leads')
       .select('id, phone')
@@ -77,7 +85,7 @@ Deno.serve(async (req: Request) => {
       if (match) leadId = match.id
     }
 
-    // 3. Inserir a mensagem recebida no histórico (tabela messages)
+    // 4. Inserir a mensagem recebida no histórico (tabela messages)
     const { error: insertError } = await supabase.from('messages').insert({
       user_id: config.user_id,
       lead_id: leadId,
@@ -92,7 +100,7 @@ Deno.serve(async (req: Request) => {
       return new Response('Database Error', { status: 500, headers: corsHeaders })
     }
 
-    // 4. Marcar o lead como não lido para notificar o atendente
+    // 5. Marcar o lead como não lido para notificar o atendente
     if (leadId) {
       await supabase.from('leads').update({ unread: true }).eq('id', leadId)
     }
