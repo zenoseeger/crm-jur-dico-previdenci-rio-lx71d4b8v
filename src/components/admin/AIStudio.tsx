@@ -96,20 +96,67 @@ export function AIStudio() {
     if (!sandboxTriggered) setSandboxTriggered(true)
 
     setIsTyping(true)
-    setTimeout(() => {
-      const historyContext =
-        chat.length > 1 ? `${chat.length} mensagens anteriores` : 'nenhum histórico'
-      const kbContext = formData.knowledgeBase.trim() ? ` e na Base de Conhecimento` : ''
 
-      setChat((prev) => [
-        ...prev,
-        {
-          role: 'ai',
-          text: `[Contexto da Conversa: ${historyContext}${kbContext}] Minha resposta simulada para "${userMsg}" seria focada na coleta do extrato CNIS, conforme diretrizes do escritório.`,
-        },
-      ])
-      setIsTyping(false)
-    }, 1500)
+    if (formData.apiKey && formData.apiKey.startsWith('sk-')) {
+      const runAi = async () => {
+        try {
+          const sysPrompt =
+            formData.prompt ||
+            'Respond as the assistant directly to the user. Do not include analysis, summaries of previous messages, or descriptions of your strategy in the final output.'
+          const history = chat.map((c) => ({
+            role: c.role === 'ai' ? 'assistant' : 'user',
+            content: c.text,
+          }))
+
+          const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${formData.apiKey}`,
+            },
+            body: JSON.stringify({
+              model: formData.model || 'gpt-5.4-mini',
+              temperature: formData.temperature,
+              messages: [
+                { role: 'system', content: sysPrompt },
+                ...history,
+                { role: 'user', content: userMsg },
+              ],
+            }),
+          })
+
+          if (!res.ok) {
+            throw new Error('Falha na API da OpenAI')
+          }
+
+          const data = await res.json()
+          const text = data.choices[0]?.message?.content || 'Sem resposta'
+          setChat((prev) => [...prev, { role: 'ai', text }])
+        } catch (err) {
+          setChat((prev) => [
+            ...prev,
+            {
+              role: 'ai',
+              text: 'Erro ao se comunicar com a OpenAI. Verifique sua chave e conexão.',
+            },
+          ])
+        } finally {
+          setIsTyping(false)
+        }
+      }
+      runAi()
+    } else {
+      setTimeout(() => {
+        setChat((prev) => [
+          ...prev,
+          {
+            role: 'ai',
+            text: `Esta é uma resposta de demonstração direta. Configure sua API Key no painel para testar interações reais com o modelo ${formData.model}.`,
+          },
+        ])
+        setIsTyping(false)
+      }, 1500)
+    }
   }
 
   return (
@@ -189,11 +236,11 @@ export function AIStudio() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="gpt-5.4-mini">gpt-5.4-mini</SelectItem>
                     <SelectItem value="gpt-4o">gpt-4o</SelectItem>
                     <SelectItem value="gpt-4o-mini">gpt-4o-mini</SelectItem>
-                    <SelectItem value="gpt-4-turbo">gpt-4-turbo</SelectItem>
-                    <SelectItem value="gpt-4">gpt-4</SelectItem>
-                    <SelectItem value="gpt-3.5-turbo">gpt-3.5-turbo</SelectItem>
+                    <SelectItem value="o1-preview">o1-preview</SelectItem>
+                    <SelectItem value="o1-mini">o1-mini</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -282,7 +329,7 @@ export function AIStudio() {
                 </Button>
               </div>
               <Textarea
-                className="min-h-[100px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900"
+                className="min-h-[120px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900"
                 value={formData.prompt}
                 onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
               />
@@ -328,7 +375,7 @@ export function AIStudio() {
             )}
           </CardTitle>
           <CardDescription className="text-slate-300">
-            Simule conversas como se fosse o Lead.
+            Simule conversas como se fosse o Lead com a IA real.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0 flex-1 flex flex-col relative overflow-hidden">
@@ -344,7 +391,7 @@ export function AIStudio() {
                 >
                   <div
                     className={cn(
-                      'max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm',
+                      'max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm whitespace-pre-wrap',
                       msg.role === 'user'
                         ? 'bg-amber-500 text-white rounded-tr-sm'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-sm border border-slate-200 dark:border-slate-700',

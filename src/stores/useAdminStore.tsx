@@ -87,8 +87,9 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
 
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     apiKey: '',
-    prompt: '',
-    model: 'gpt-4o-mini',
+    prompt:
+      'Você é um assistente virtual focado em atendimento direto. Respond as the assistant directly to the user. Do not include analysis, summaries of previous messages, or descriptions of your strategy in the final output.',
+    model: 'gpt-5.4-mini',
     temperature: 0.7,
     enabled: true,
     knowledgeBase: '',
@@ -149,8 +150,8 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
             setAiConfig((p) => ({
               ...p,
               apiKey: data.api_key || '',
-              model: data.model || 'gpt-4o-mini',
-              prompt: data.prompt || '',
+              model: data.model || 'gpt-5.4-mini',
+              prompt: data.prompt || p.prompt,
               qualificationPrompt: data.qualification_prompt || p.qualificationPrompt,
               enabled: data.enabled ?? true,
               knowledgeBase: data.knowledge_base || '',
