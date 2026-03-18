@@ -43,7 +43,6 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // 1. Encontrar o usuário através do instance_id configurado no Z-api
     const { data: config } = await supabase
       .from('whatsapp_configs')
       .select('user_id')
@@ -57,7 +56,6 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // 2. Registrar no log de diagnósticos (whatsapp_logs)
     await supabase.from('whatsapp_logs').insert({
       user_id: config.user_id,
       event_type: 'WEBHOOK_RECEIVED',
@@ -65,7 +63,6 @@ Deno.serve(async (req: Request) => {
       details: payload,
     })
 
-    // 3. Encontrar o lead associado ao número de telefone
     const { data: leads } = await supabase
       .from('leads')
       .select('id, phone')
@@ -76,7 +73,7 @@ Deno.serve(async (req: Request) => {
       const normalizedIncomingPhone = String(phone).replace(/\D/g, '')
       const match = leads.find((l) => {
         const normalizedLeadPhone = String(l.phone || '').replace(/\D/g, '')
-        // Validação flexível para cobrir DDI/DDD
+        if (!normalizedLeadPhone) return false
         return (
           normalizedIncomingPhone.endsWith(normalizedLeadPhone) ||
           normalizedLeadPhone.endsWith(normalizedIncomingPhone)
@@ -85,7 +82,34 @@ Deno.serve(async (req: Request) => {
       if (match) leadId = match.id
     }
 
-    // 4. Inserir a mensagem recebida no histórico (tabela messages)
+    if (!leadId) {
+      const pushName = payload.senderName || payload.pushName || payload.contactName || phone
+      const { data: newLead, error: createLeadError } = await supabase
+        .from('leads')
+        .insert({
+          user_id: config.user_id,
+          name: pushName,
+          phone: phone,
+          stage: 'NOVO LEAD',
+          unread: true,
+        })
+        .select('id')
+        .single()
+
+      if (createLeadError) {
+        console.error('Error creating lead:', createLeadError)
+      } else if (newLead) {
+        leadId = newLead.id
+
+        await supabase.from('whatsapp_logs').insert({
+          user_id: config.user_id,
+          event_type: 'LEAD_CREATED',
+          message: `Novo lead criado via WhatsApp: ${pushName} (${phone})`,
+          details: { leadId: newLead.id, phone },
+        })
+      }
+    }
+
     const { error: insertError } = await supabase.from('messages').insert({
       user_id: config.user_id,
       lead_id: leadId,
@@ -100,7 +124,6 @@ Deno.serve(async (req: Request) => {
       return new Response('Database Error', { status: 500, headers: corsHeaders })
     }
 
-    // 5. Marcar o lead como não lido para notificar o atendente
     if (leadId) {
       await supabase.from('leads').update({ unread: true }).eq('id', leadId)
     }
