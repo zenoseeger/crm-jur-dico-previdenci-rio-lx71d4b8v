@@ -92,14 +92,18 @@ export function ChatTab({ lead }: { lead: Lead }) {
   ) => {
     if (!user) return
 
+    // Ensure absolutely clean text, removing any leading/trailing whitespace
+    const cleanText = text.trim()
+
     const newMsg = {
       user_id: user.id,
       lead_id: lead.id,
-      content: isAi ? `[IA] ${text}` : text,
+      content: isAi ? `[IA] ${cleanText}` : cleanText,
       direction,
       message_type: 'text',
     }
 
+    // 1. Database Consistency: Save the clean version reflecting exactly what was intended
     const { data, error } = await supabase.from('messages').insert(newMsg).select().single()
     if (error) {
       toast.error('Erro ao salvar a mensagem no banco de dados.')
@@ -113,36 +117,40 @@ export function ChatTab({ lead }: { lead: Lead }) {
       })
     }
 
-    if (
-      direction === 'outbound' &&
-      config?.provider === 'z-api' &&
-      config.instance_id &&
-      config.token
-    ) {
+    // 2. Validation of Configuration & Clean Message Sending Logic
+    if (direction === 'outbound' && config?.provider === 'z-api') {
+      if (!config.instance_id || !config.token || !config.client_token) {
+        toast.error(
+          'Configuração do WhatsApp incompleta. Verifique Instance ID, Token e Client Token na aba de Administração para evitar erros.',
+        )
+        return
+      }
+
       const phone = lead.phone.replace(/\D/g, '')
       const formattedPhone = phone.length <= 11 ? `55${phone}` : phone
 
       try {
         const res = await fetch(
-          `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/send-text`,
+          `https://api.z-api.io/instances/${config.instance_id.trim()}/token/${config.token.trim()}/send-text`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Client-Token': config.client_token || '',
+              'Client-Token': config.client_token.trim(),
             },
-            body: JSON.stringify({ phone: formattedPhone, message: text }),
+            // Payload Sanitization: send pure cleanText, without any hardcoded trial/debug strings
+            body: JSON.stringify({ phone: formattedPhone, message: cleanText }),
           },
         )
 
         if (!res.ok) {
           const errText = await res.text()
-          toast.error('Falha ao enviar mensagem no WhatsApp.')
+          toast.error('Falha ao enviar mensagem no WhatsApp. Verifique sua conexão ou credenciais.')
           await supabase.from('whatsapp_logs').insert({
             user_id: user.id,
             event_type: 'MESSAGE_SEND_ERROR',
             message: `Erro ao enviar mensagem para ${formattedPhone}`,
-            details: { status: res.status, response: errText, text },
+            details: { status: res.status, response: errText, text: cleanText },
           })
         }
       } catch (err: any) {
@@ -151,7 +159,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
           user_id: user.id,
           event_type: 'MESSAGE_SEND_ERROR',
           message: `Erro de rede ao enviar para ${formattedPhone}`,
-          details: { error: err.message, text },
+          details: { error: err.message, text: cleanText },
         })
       }
     }
@@ -260,6 +268,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
           {messages.map((msg) => {
             const isInbound = msg.direction === 'inbound'
             const isAi = msg.content.startsWith('[IA] ')
+            // Clean text rendering in UI reflecting the raw input
             const displayText = isAi ? msg.content.replace('[IA] ', '') : msg.content
 
             return (
