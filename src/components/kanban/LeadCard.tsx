@@ -1,5 +1,14 @@
 import React from 'react'
-import { Clock, MessageCircle, MoreVertical, CalendarClock, Bot, KeyRound, Ban } from 'lucide-react'
+import {
+  Clock,
+  MessageCircle,
+  MoreVertical,
+  CalendarClock,
+  Bot,
+  KeyRound,
+  Ban,
+  Mail,
+} from 'lucide-react'
 import { Lead } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -98,7 +107,7 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
 
       <CardContent className="p-3 space-y-3">
         <div className="flex justify-between items-start">
-          <div className="space-y-1 pr-6 flex-1">
+          <div className="space-y-1.5 pr-6 flex-1">
             <div className="flex items-center gap-1">
               <h4 className="font-semibold text-sm leading-tight text-foreground truncate max-w-[85%]">
                 {lead.name}
@@ -124,9 +133,19 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <div className="flex items-center text-xs text-muted-foreground gap-1">
-              <MessageCircle className="w-3 h-3 text-emerald-500" />
-              <span>{lead.phone}</span>
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+              {lead.phone && (
+                <div className="flex items-center gap-1.5">
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="truncate">{lead.phone}</span>
+                </div>
+              )}
+              {lead.email && (
+                <div className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                  <span className="truncate">{lead.email}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -195,7 +214,7 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
           )}
         </div>
 
-        <div className="flex justify-between items-center text-[10px] text-muted-foreground border-t pt-2">
+        <div className="flex justify-between items-center text-[10px] text-muted-foreground border-t pt-2 mt-2">
           <span className="truncate max-w-[100px] font-medium text-foreground/70">
             {lead.assignee}
           </span>

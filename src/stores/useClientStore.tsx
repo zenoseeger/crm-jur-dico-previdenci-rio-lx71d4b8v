@@ -1,6 +1,14 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useCallback,
+} from 'react'
 import { Client } from '@/types'
 import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/use-auth'
 
 interface ClientStore {
   clients: Client[]
@@ -12,68 +20,71 @@ interface ClientStore {
 const ClientContext = createContext<ClientStore | undefined>(undefined)
 
 export const ClientProvider = ({ children }: { children: ReactNode }) => {
+  const { user, loading: authLoading } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
 
-  const fetchClients = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  const fetchClients = useCallback(async () => {
     if (!user) return
 
-    const isAdmin = user.email === 'zhseeger@gmail.com'
+    try {
+      const isAdmin = user.email === 'zhseeger@gmail.com'
 
-    let clientsQuery = supabase.from('clients').select('*')
-    let docsQuery = supabase.from('documents').select('*')
+      let clientsQuery = supabase
+        .from('clients')
+        .select('*')
+        .order('created_at', { ascending: false })
+      let docsQuery = supabase.from('documents').select('*')
 
-    if (!isAdmin) {
-      clientsQuery = clientsQuery.eq('user_id', user.id)
-      docsQuery = docsQuery.eq('user_id', user.id)
+      if (!isAdmin) {
+        clientsQuery = clientsQuery.eq('user_id', user.id)
+        docsQuery = docsQuery.eq('user_id', user.id)
+      }
+
+      const [{ data: dbClients }, { data: dbDocs }] = await Promise.all([clientsQuery, docsQuery])
+
+      if (dbClients) {
+        setClients(
+          dbClients.map((c) => ({
+            id: c.id,
+            name: c.name,
+            cpf: c.cpf || '',
+            email: c.email || '',
+            phone: c.phone || '',
+            status: c.status || 'Cliente Ativo',
+            date: new Date(c.created_at).toLocaleDateString('pt-BR'),
+            city: c.city || '',
+            benefitType: c.benefit_type || '',
+            documents:
+              dbDocs
+                ?.filter((d) => d.client_id === c.id)
+                .map((d) => ({
+                  id: d.id,
+                  name: d.name,
+                  url: d.file_url,
+                  size: d.size || 0,
+                  type: d.type || '',
+                  uploadDate: d.created_at,
+                  clientId: d.client_id,
+                })) || [],
+          })),
+        )
+      }
+    } catch (err) {
+      console.error('Error fetching clients:', err)
     }
-
-    const [{ data: dbClients }, { data: dbDocs }] = await Promise.all([clientsQuery, docsQuery])
-
-    if (dbClients) {
-      setClients(
-        dbClients.map((c) => ({
-          id: c.id,
-          name: c.name,
-          cpf: c.cpf || '',
-          email: c.email || '',
-          phone: c.phone || '',
-          status: c.status || 'Cliente Ativo',
-          date: new Date(c.created_at).toLocaleDateString('pt-BR'),
-          city: c.city || '',
-          benefitType: c.benefit_type || '',
-          documents:
-            dbDocs
-              ?.filter((d) => d.client_id === c.id)
-              .map((d) => ({
-                id: d.id,
-                name: d.name,
-                url: d.file_url,
-                size: d.size || 0,
-                type: d.type || '',
-                uploadDate: d.created_at,
-                clientId: d.client_id,
-              })) || [],
-        })),
-      )
-    }
-  }
+  }, [user])
 
   useEffect(() => {
-    const sub = supabase.auth.onAuthStateChange((e, s) =>
-      s?.user ? fetchClients() : setClients([]),
-    )
-    fetchClients()
-    return () => sub.data.subscription.unsubscribe()
-  }, [])
+    if (authLoading) return
+    if (user) {
+      fetchClients()
+    } else {
+      setClients([])
+    }
+  }, [user, authLoading, fetchClients])
 
   const addClient = async (client: Client) => {
     setClients((p) => [client, ...p])
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('clients').insert({
         id: client.id,

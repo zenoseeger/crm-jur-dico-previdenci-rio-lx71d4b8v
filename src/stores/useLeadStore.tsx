@@ -1,8 +1,16 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useCallback,
+} from 'react'
 import { Lead, Stage, Task, TaskTemplate, DocumentFile } from '@/types'
 import { processTagsForFlows, processTaskCompletionForFlows } from '@/lib/flowLogic'
 import { useAdminStore } from '@/stores/useAdminStore'
 import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/use-auth'
 
 interface LeadStore {
   leads: Lead[]
@@ -32,6 +40,7 @@ interface LeadStore {
 const LeadContext = createContext<LeadStore | undefined>(undefined)
 
 export const LeadProvider = ({ children }: { children: ReactNode }) => {
+  const { user, loading: authLoading } = useAuth()
   const [leads, setLeads] = useState<Lead[]>([])
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -42,20 +51,12 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
 
   const selectedLead = leads.find((l) => l.id === selectedLeadId) || null
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
+    if (!user) return
+
     setIsLoading(true)
     setError(null)
     try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
-
-      if (authError || !user) {
-        setIsLoading(false)
-        return
-      }
-
       const isAdmin = user.email === 'zhseeger@gmail.com'
 
       let leadsQuery = supabase.from('leads').select('*').order('created_at', { ascending: false })
@@ -68,8 +69,8 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
 
       const [leadsRes, docsRes] = await Promise.all([leadsQuery, docsQuery])
 
-      if (leadsRes.error) throw new Error(leadsRes.error.message)
-      if (docsRes.error) throw new Error(docsRes.error.message)
+      if (leadsRes.error) throw leadsRes.error
+      if (docsRes.error) throw docsRes.error
 
       if (leadsRes.data) {
         setLeads(
@@ -83,15 +84,15 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
             heat: (l.heat as any) || 'Morno',
             tags: l.tags || [],
             timeInStage: l.time_in_stage || '0m',
-            unread: l.unread,
+            unread: l.unread ?? false,
             benefitType: l.benefit_type || '',
             city: l.city || '',
             assignee: l.assignee || '',
             aiScore: l.ai_score || 0,
-            aiEnabled: l.ai_enabled,
-            aiTriggered: l.ai_triggered,
-            tasks: l.tasks || [],
-            activeFlows: l.active_flows || [],
+            aiEnabled: l.ai_enabled ?? false,
+            aiTriggered: l.ai_triggered ?? false,
+            tasks: (l.tasks as any) || [],
+            activeFlows: (l.active_flows as any) || [],
             lostReason: l.notes || '',
             notes: l.notes || '',
             createdAt: l.created_at,
@@ -112,26 +113,21 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (err: any) {
       console.error('Error fetching leads:', err)
-      setError(err.message || 'Falha ao carregar leads.')
+      setError(err.message || 'Falha ao carregar leads da base de dados.')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user])
 
   useEffect(() => {
-    const sub = supabase.auth.onAuthStateChange((e, s) => {
-      if (s?.user) {
-        fetchLeads()
-      } else {
-        setLeads([])
-        setIsLoading(false)
-      }
-    })
-
-    fetchLeads()
-
-    return () => sub.data.subscription.unsubscribe()
-  }, [])
+    if (authLoading) return
+    if (user) {
+      fetchLeads()
+    } else {
+      setLeads([])
+      setIsLoading(false)
+    }
+  }, [user, authLoading, fetchLeads])
 
   const updateDb = async (id: string, updates: Partial<Lead>) => {
     const map: any = {}
@@ -226,9 +222,6 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
 
   const addLead = async (lead: Lead) => {
     setLeads((p) => [lead, ...p])
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('leads').insert({
         id: lead.id,
@@ -302,9 +295,6 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     setLeads((p) =>
       p.map((l) => (l.id === leadId ? { ...l, documents: [doc, ...(l.documents || [])] } : l)),
     )
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('documents').insert({
         id: doc.id,

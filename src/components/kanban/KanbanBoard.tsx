@@ -13,11 +13,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { FolderKanban } from 'lucide-react'
+import { FolderKanban, Plus } from 'lucide-react'
 
 export function KanbanBoard() {
-  const { leads, currentPipelineId, setCurrentPipelineId, setSelectedLead, moveLead } =
+  const { leads, currentPipelineId, setCurrentPipelineId, setSelectedLead, moveLead, addLead } =
     useLeadStore()
   const { pipelines, pipelineStages, currentUser } = useAdminStore()
   const isMobile = useIsMobile()
@@ -37,6 +49,8 @@ export function KanbanBoard() {
 
   const [lostDialogOpen, setLostDialogOpen] = useState(false)
   const [pendingMove, setPendingMove] = useState<{ id: string; stage: string } | null>(null)
+  const [addLeadOpen, setAddLeadOpen] = useState(false)
+  const [newLead, setNewLead] = useState({ name: '', phone: '', email: '' })
 
   const activePipeline =
     allowedPipelines.find((p) => p.id === currentPipelineId) || allowedPipelines[0]
@@ -85,6 +99,27 @@ export function KanbanBoard() {
     }
   }
 
+  const handleAddSubmit = () => {
+    if (!newLead.name) return
+    addLead({
+      id: crypto.randomUUID(),
+      name: newLead.name,
+      phone: newLead.phone,
+      email: newLead.email,
+      pipelineId: activePipeline?.id || 'p1',
+      stage: sortedStages[0]?.name || 'NOVO LEAD',
+      heat: 'Morno',
+      tags: [],
+      timeInStage: '0m',
+      unread: true,
+      aiEnabled: true,
+      aiTriggered: false,
+      createdAt: new Date().toISOString(),
+    })
+    setAddLeadOpen(false)
+    setNewLead({ name: '', phone: '', email: '' })
+  }
+
   if (allowedPipelines.length === 0) {
     return (
       <div className="flex items-center justify-center h-full p-8 text-center text-muted-foreground animate-fade-in">
@@ -93,10 +128,67 @@ export function KanbanBoard() {
     )
   }
 
+  const AddLeadDialog = () => (
+    <Dialog open={addLeadOpen} onOpenChange={setAddLeadOpen}>
+      <DialogTrigger asChild>
+        {isMobile ? (
+          <Button size="icon" className="shrink-0 bg-slate-900 text-white">
+            <Plus className="w-4 h-4" />
+          </Button>
+        ) : (
+          <Button size="sm" className="gap-2 bg-slate-900 text-white hover:bg-slate-800">
+            <Plus className="w-4 h-4" /> Novo Lead
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Cadastrar Novo Lead</DialogTitle>
+          <DialogDescription>Adicione manualmente um novo contato ao pipeline.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label>Nome Completo *</Label>
+            <Input
+              value={newLead.name}
+              onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
+              placeholder="Ex: João da Silva"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>Telefone / WhatsApp</Label>
+            <Input
+              value={newLead.phone}
+              onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
+              placeholder="(11) 99999-9999"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>E-mail</Label>
+            <Input
+              type="email"
+              value={newLead.email}
+              onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
+              placeholder="joao@email.com"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setAddLeadOpen(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleAddSubmit} disabled={!newLead.name} className="bg-slate-900">
+            Adicionar Lead
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
   if (isMobile) {
     return (
       <div className="flex flex-col h-full bg-background p-4 animate-fade-in">
-        <div className="mb-4">
+        <div className="flex items-center gap-2 mb-4">
           <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
             <SelectTrigger className="w-full font-semibold">
               <SelectValue placeholder="Selecione um Pipeline" />
@@ -109,6 +201,7 @@ export function KanbanBoard() {
               ))}
             </SelectContent>
           </Select>
+          <AddLeadDialog />
         </div>
         <Tabs
           value={activeTab}
@@ -174,6 +267,7 @@ export function KanbanBoard() {
             </SelectContent>
           </Select>
         </div>
+        <AddLeadDialog />
       </div>
 
       <ScrollArea className="w-full flex-1" orientation="horizontal">
