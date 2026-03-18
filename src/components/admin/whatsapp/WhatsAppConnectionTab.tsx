@@ -84,7 +84,7 @@ export function WhatsAppConnectionTab({
               />
             </div>
             <div className="space-y-2">
-              <Label>Client Token (Segurança)</Label>
+              <Label>Client Token</Label>
               <div className="relative">
                 <Input
                   type={showClientToken ? 'text' : 'password'}

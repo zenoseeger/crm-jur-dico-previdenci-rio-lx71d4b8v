@@ -152,7 +152,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
     if (!config.instance_id || !config.token || !config.client_token) {
       if (!config.client_token) {
         toast.error(
-          'Seu Client-Token não está configurado. Por favor, preencha o campo na aba de configuração e salve.',
+          'Client-Token não configurado. Por favor, preencha o campo Client Token e salve antes de testar.',
         )
       } else {
         toast.error('Configuração incompleta: Instance ID ou Token ausente.')
@@ -180,7 +180,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
       if (!statusRes.ok) {
         let errMsg = 'Erro desconhecido na Z-api.'
         if (statusRes.status === 401 || statusRes.status === 403) {
-          errMsg = 'Falha na Autenticação: Verifique o Token da Z-api e o Client Token.'
+          errMsg = 'Falha na autenticação: Client-Token inválido ou expirado.'
         } else if (statusRes.status === 404) {
           errMsg = 'Instância não encontrada: Verifique o Instance ID.'
         } else if (statusRes.status === 400) {
@@ -191,12 +191,10 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
 
         toast.error(errMsg)
         await updateDbStatus('error', errMsg)
-        await logWhatsAppEvent(
-          user.id,
-          'webhook_health_check',
-          `Falha de conectividade: ${errMsg}`,
-          { status: statusRes.status, body: statusData },
-        )
+        await logWhatsAppEvent(user.id, 'health_check', `Falha de conectividade: ${errMsg}`, {
+          status: statusRes.status,
+          body: statusData,
+        })
         setIsTestingWebhook(false)
         return
       }
@@ -243,7 +241,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
           await updateDbStatus('error', `Falha no Webhook: ${errMsg}`)
           await logWhatsAppEvent(
             user.id,
-            'webhook_health_check',
+            'health_check',
             `Falha de configuração de webhook: ${errMsg}`,
             { status: webhookRes.status, body: webhookData },
           )
@@ -268,7 +266,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
 
       await logWhatsAppEvent(
         user.id,
-        'webhook_health_check',
+        'health_check',
         webhookConfigured
           ? 'Webhook verificado e atualizado com sucesso!'
           : 'Webhook verificado com sucesso! URL já estava correta.',
@@ -283,7 +281,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
     } catch (error: any) {
       toast.error('Erro de rede ao testar webhook.')
       await updateDbStatus('error', `Falha de rede: ${error.message}`)
-      await logWhatsAppEvent(user.id, 'webhook_health_check', 'Erro de rede durante health check', {
+      await logWhatsAppEvent(user.id, 'health_check', 'Erro de rede durante health check', {
         error: error.message,
       })
     } finally {
