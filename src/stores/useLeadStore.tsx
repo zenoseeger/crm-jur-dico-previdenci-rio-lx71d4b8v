@@ -6,11 +6,12 @@ import React, {
   useEffect,
   useCallback,
 } from 'react'
-import { Lead, Stage, Task, TaskTemplate, DocumentFile } from '@/types'
+import { Lead, Stage, Task, TaskTemplate, DocumentFile, TaskAutomation } from '@/types'
 import { processTagsForFlows, processTaskCompletionForFlows } from '@/lib/flowLogic'
 import { useAdminStore } from '@/stores/useAdminStore'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
+import { toast } from 'sonner'
 
 interface LeadStore {
   leads: Lead[]
@@ -19,10 +20,14 @@ interface LeadStore {
   currentPipelineId: string | null
   isLoading: boolean
   error: string | null
+  taskAutomations: TaskAutomation[]
   setSearchQuery: (q: string) => void
   setSelectedLead: (lead: Lead | null) => void
   setCurrentPipelineId: (id: string | null) => void
   fetchLeads: () => Promise<void>
+  fetchTaskAutomations: () => Promise<void>
+  addTaskAutomation: (stage: string, taskTitle: string) => Promise<void>
+  deleteTaskAutomation: (id: string) => Promise<void>
   moveLead: (id: string, to: Stage, r?: string, tags?: string[], tasks?: TaskTemplate[]) => void
   addLead: (lead: Lead) => void
   editLead: (id: string, updates: Partial<Lead>) => Promise<void>
@@ -44,6 +49,7 @@ const LeadContext = createContext<LeadStore | undefined>(undefined)
 export const LeadProvider = ({ children }: { children: ReactNode }) => {
   const { user, loading: authLoading } = useAuth()
   const [leads, setLeads] = useState<Lead[]>([])
+  const [taskAutomations, setTaskAutomations] = useState<TaskAutomation[]>([])
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPipelineId, setCurrentPipelineId] = useState<string | null>(null)
@@ -121,15 +127,42 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user])
 
+  const fetchTaskAutomations = useCallback(async () => {
+    if (!user) return
+    try {
+      const { data, error } = await supabase
+        .from('task_automations')
+        .select('*')
+        .eq('user_id', user.id)
+
+      if (error) throw error
+      if (data) {
+        setTaskAutomations(
+          data.map((d: any) => ({
+            id: d.id,
+            userId: d.user_id,
+            stage: d.stage,
+            taskTitle: d.task_title,
+            createdAt: d.created_at,
+          })),
+        )
+      }
+    } catch (err) {
+      console.error('Error fetching task automations:', err)
+    }
+  }, [user])
+
   useEffect(() => {
     if (authLoading) return
     if (user) {
       fetchLeads()
+      fetchTaskAutomations()
     } else {
       setLeads([])
+      setTaskAutomations([])
       setIsLoading(false)
     }
-  }, [user, authLoading, fetchLeads])
+  }, [user, authLoading, fetchLeads, fetchTaskAutomations])
 
   const updateDb = async (id: string, updates: Partial<Lead>) => {
     const map: any = {}
@@ -143,6 +176,44 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     if (updates.aiTriggered !== undefined) map.ai_triggered = updates.aiTriggered
     if (updates.unread !== undefined) map.unread = updates.unread
     if (Object.keys(map).length > 0) await supabase.from('leads').update(map).eq('id', id)
+  }
+
+  const addTaskAutomation = async (stage: string, taskTitle: string) => {
+    if (!user) return
+    const newAuto = {
+      id: crypto.randomUUID(),
+      user_id: user.id,
+      stage,
+      task_title: taskTitle,
+      created_at: new Date().toISOString(),
+    }
+    const parsedNewAuto = {
+      id: newAuto.id,
+      userId: newAuto.user_id,
+      stage: newAuto.stage,
+      taskTitle: newAuto.task_title,
+      createdAt: newAuto.created_at,
+    }
+    setTaskAutomations((p) => [...p, parsedNewAuto])
+    const { error } = await supabase.from('task_automations').insert(newAuto)
+    if (error) {
+      setTaskAutomations((p) => p.filter((a) => a.id !== newAuto.id))
+      toast.error('Erro ao salvar automação.')
+    } else {
+      toast.success('Automação salva com sucesso!')
+    }
+  }
+
+  const deleteTaskAutomation = async (id: string) => {
+    const prev = taskAutomations
+    setTaskAutomations((p) => p.filter((a) => a.id !== id))
+    const { error } = await supabase.from('task_automations').delete().eq('id', id)
+    if (error) {
+      setTaskAutomations(prev)
+      toast.error('Erro ao remover automação.')
+    } else {
+      toast.success('Automação removida.')
+    }
   }
 
   const editLead = async (id: string, updates: Partial<Lead>) => {
@@ -179,6 +250,11 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     autoTags: string[] = [],
     autoTasks: TaskTemplate[] = [],
   ) => {
+    const stageAutomations = taskAutomations.filter((a) => a.stage === to)
+    if (stageAutomations.length > 0) {
+      toast.success(`${stageAutomations.length} tarefa(s) adicionada(s) automaticamente!`)
+    }
+
     setLeads((prev) =>
       prev.map((l) => {
         if (l.id !== leadId) return l
@@ -190,10 +266,21 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
           completed: false,
           createdAt: new Date().toISOString(),
         }))
+
+        const addedFromAutomations = stageAutomations.map((a) => ({
+          id: crypto.randomUUID(),
+          title: a.taskTitle,
+          description: 'Criado via automação de etapa',
+          completed: false,
+          createdAt: new Date().toISOString(),
+        }))
+
+        const allNewTasks = [...added, ...addedFromAutomations]
+
         const { tasks, activeFlows } = processTagsForFlows(
           l,
           autoTags,
-          [...(l.tasks || []), ...added],
+          [...(l.tasks || []), ...allNewTasks],
           l.activeFlows || [],
           aiFlows,
         )
@@ -364,9 +451,13 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     currentPipelineId,
     isLoading,
     error,
+    taskAutomations,
     fetchLeads,
+    fetchTaskAutomations,
     setSearchQuery,
     setCurrentPipelineId,
+    addTaskAutomation,
+    deleteTaskAutomation,
     moveLead,
     addLead,
     editLead,

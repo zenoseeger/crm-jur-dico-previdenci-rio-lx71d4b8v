@@ -46,6 +46,14 @@ export interface PipelineStage {
   autoTasks: TaskTemplate[]
 }
 
+export interface TaskAutomation {
+  id: string
+  userId: string
+  stage: string
+  taskTitle: string
+  createdAt: string
+}
+
 export interface Lead {
   id: string
   name: string

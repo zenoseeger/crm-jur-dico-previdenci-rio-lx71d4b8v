@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { CalendarClock, CheckCircle2 } from 'lucide-react'
 import useLeadStore from '@/stores/useLeadStore'
 import { cn } from '@/lib/utils'
@@ -14,12 +14,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { TaskAutomationsManager } from '@/components/tasks/TaskAutomationsManager'
 
 type FilterType = 'all' | 'pending' | 'overdue' | 'completed'
 
 export default function Tasks() {
   const { leads, toggleTask } = useLeadStore()
   const [filter, setFilter] = useState<FilterType>('pending')
+  const [mainTab, setMainTab] = useState<'tasks' | 'automations'>('tasks')
 
   const allTasks = useMemo(() => {
     return leads
@@ -54,84 +56,99 @@ export default function Tasks() {
         </div>
       </div>
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)} className="w-full">
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as any)} className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="pending">Pendentes</TabsTrigger>
-          <TabsTrigger value="overdue" className="data-[state=active]:text-destructive">
-            Atrasadas
-          </TabsTrigger>
-          <TabsTrigger value="completed">Concluídas</TabsTrigger>
-          <TabsTrigger value="all">Todas</TabsTrigger>
+          <TabsTrigger value="tasks">Tarefas do Pipeline</TabsTrigger>
+          <TabsTrigger value="automations">Configurar Automações</TabsTrigger>
         </TabsList>
 
-        <Card>
-          <CardContent className="p-0">
-            {filteredTasks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
-                <CheckCircle2 className="w-12 h-12 opacity-20" />
-                <p>Nenhuma tarefa encontrada para este filtro.</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-12 text-center">Status</TableHead>
-                    <TableHead>Tarefa</TableHead>
-                    <TableHead>Lead Associado</TableHead>
-                    <TableHead>Prazo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTasks.map((task) => {
-                    const isOverdue =
-                      task.dueDate && !task.completed && new Date(task.dueDate) < now
+        <TabsContent value="tasks" className="m-0 border-none p-0 outline-none space-y-4">
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)} className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="pending">Pendentes</TabsTrigger>
+              <TabsTrigger value="overdue" className="data-[state=active]:text-destructive">
+                Atrasadas
+              </TabsTrigger>
+              <TabsTrigger value="completed">Concluídas</TabsTrigger>
+              <TabsTrigger value="all">Todas</TabsTrigger>
+            </TabsList>
 
-                    return (
-                      <TableRow
-                        key={`${task.leadId}-${task.id}`}
-                        className={cn(task.completed && 'opacity-60')}
-                      >
-                        <TableCell className="text-center">
-                          <Checkbox
-                            checked={task.completed}
-                            onCheckedChange={() => toggleTask(task.leadId, task.id)}
-                            className="translate-y-[2px]"
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          <span
-                            className={cn(task.completed && 'line-through text-muted-foreground')}
-                          >
-                            {task.title}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{task.leadName}</TableCell>
-                        <TableCell>
-                          {task.dueDate ? (
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                'gap-1',
-                                isOverdue
-                                  ? 'border-destructive/50 text-destructive bg-destructive/10'
-                                  : 'text-muted-foreground',
-                              )}
-                            >
-                              <CalendarClock className="w-3 h-3" />
-                              {new Date(task.dueDate).toLocaleDateString()}
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
+            <Card>
+              <CardContent className="p-0">
+                {filteredTasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
+                    <CheckCircle2 className="w-12 h-12 opacity-20" />
+                    <p>Nenhuma tarefa encontrada para este filtro.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-12 text-center">Status</TableHead>
+                        <TableHead>Tarefa</TableHead>
+                        <TableHead>Lead Associado</TableHead>
+                        <TableHead>Prazo</TableHead>
                       </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.map((task) => {
+                        const isOverdue =
+                          task.dueDate && !task.completed && new Date(task.dueDate) < now
+
+                        return (
+                          <TableRow
+                            key={`${task.leadId}-${task.id}`}
+                            className={cn(task.completed && 'opacity-60')}
+                          >
+                            <TableCell className="text-center">
+                              <Checkbox
+                                checked={task.completed}
+                                onCheckedChange={() => toggleTask(task.leadId, task.id)}
+                                className="translate-y-[2px]"
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <span
+                                className={cn(
+                                  task.completed && 'line-through text-muted-foreground',
+                                )}
+                              >
+                                {task.title}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{task.leadName}</TableCell>
+                            <TableCell>
+                              {task.dueDate ? (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    'gap-1',
+                                    isOverdue
+                                      ? 'border-destructive/50 text-destructive bg-destructive/10'
+                                      : 'text-muted-foreground',
+                                  )}
+                                >
+                                  <CalendarClock className="w-3 h-3" />
+                                  {new Date(task.dueDate).toLocaleDateString()}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </Tabs>
+        </TabsContent>
+
+        <TabsContent value="automations" className="m-0 border-none p-0 outline-none space-y-4">
+          <TaskAutomationsManager />
+        </TabsContent>
       </Tabs>
     </div>
   )
