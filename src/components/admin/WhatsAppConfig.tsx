@@ -1,118 +1,176 @@
-import React from 'react'
-import { useAdminStore } from '@/stores/useAdminStore'
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
+import { DbWhatsAppConfig } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { WhatsAppConnectionType } from '@/types'
-import { WhatsAppWebConfig } from './whatsapp/WhatsAppWebConfig'
-import { WhatsAppOfficialConfig } from './whatsapp/WhatsAppOfficialConfig'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Copy, Loader2, Save } from 'lucide-react'
+import { toast } from 'sonner'
 
 export function WhatsAppConfig() {
-  const { whatsAppConfig, updateWhatsAppConfig } = useAdminStore()
+  const { user } = useAuth()
+  const [config, setConfig] = useState<Partial<DbWhatsAppConfig>>({ provider: 'none' })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
-  const handleTypeChange = (val: WhatsAppConnectionType) => {
-    if (val === 'official' && whatsAppConfig.webSessionStatus === 'connected') {
-      if (
-        !window.confirm('Mudar para a API Oficial irá desconectar sua sessão Web atual. Continuar?')
-      ) {
-        return
-      }
-      updateWhatsAppConfig({ connectionType: val, webSessionStatus: 'disconnected' })
-    } else {
-      updateWhatsAppConfig({ connectionType: val })
+  useEffect(() => {
+    if (!user) return
+    const fetchConfig = async () => {
+      const { data } = await supabase
+        .from('whatsapp_configs')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (data) setConfig(data)
+      setLoading(false)
     }
+    fetchConfig()
+  }, [user])
+
+  const handleSave = async () => {
+    if (!user) return
+    setSaving(true)
+
+    const payload: any = {
+      user_id: user.id,
+      provider: config.provider,
+      instance_id: config.instance_id,
+      token: config.token,
+      client_token: config.client_token,
+    }
+    if (config.id) payload.id = config.id
+
+    const { data, error } = await supabase
+      .from('whatsapp_configs')
+      .upsert(payload, { onConflict: 'user_id' })
+      .select()
+      .single()
+
+    if (error) {
+      toast.error('Erro ao salvar as configurações.')
+    } else {
+      toast.success('Configurações salvas com sucesso!')
+      if (data) setConfig(data)
+    }
+    setSaving(false)
   }
 
-  const renderBadge = () => {
-    if (whatsAppConfig.connectionType === 'official') {
-      return (
-        <Badge
-          variant={whatsAppConfig.connected ? 'default' : 'destructive'}
-          className={whatsAppConfig.connected ? 'bg-[#25D366] hover:bg-[#1DA851]' : ''}
-        >
-          {whatsAppConfig.connected ? 'Conectado (Oficial)' : 'Desconectado'}
-        </Badge>
-      )
-    }
-    switch (whatsAppConfig.webSessionStatus) {
-      case 'connected':
-        return <Badge className="bg-[#25D366] hover:bg-[#1DA851]">Conectado (Web)</Badge>
-      case 'awaiting_scan':
-        return <Badge className="bg-amber-500 hover:bg-amber-600">Aguardando QR</Badge>
-      case 'authenticating':
-        return <Badge className="bg-blue-500 hover:bg-blue-600">Gerando Sessão...</Badge>
-      case 'error':
-        return <Badge variant="destructive">Erro de Conexão</Badge>
-      default:
-        return <Badge variant="secondary">Desconectado</Badge>
-    }
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zapi-webhook`
+
+  if (loading) {
+    return (
+      <Card className="border-slate-200 dark:border-slate-800 shadow-sm max-w-3xl flex items-center justify-center p-12">
+        <Loader2 className="animate-spin text-primary w-8 h-8" />
+      </Card>
+    )
   }
 
   return (
     <Card className="border-slate-200 dark:border-slate-800 shadow-sm max-w-3xl">
       <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>Integração WhatsApp</CardTitle>
-            <CardDescription>
-              Configure o método de conexão para envio e recebimento de mensagens.
-            </CardDescription>
-          </div>
-          {renderBadge()}
-        </div>
+        <CardTitle>Integração Z-api</CardTitle>
+        <CardDescription>
+          Configure o provedor para habilitar o envio e recebimento de mensagens, além do uso de IA
+          pelo WhatsApp.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-4">
-          <Label className="text-base font-semibold">Método de Conexão</Label>
-          <RadioGroup
-            value={whatsAppConfig.connectionType}
-            onValueChange={handleTypeChange}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        <div className="space-y-2">
+          <Label className="text-base font-semibold">Provedor de Conexão</Label>
+          <Select
+            value={config.provider}
+            onValueChange={(v: any) => setConfig({ ...config, provider: v })}
           >
-            <div
-              className={`border p-4 rounded-xl cursor-pointer transition-all ${whatsAppConfig.connectionType === 'official' ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/50 border-border'}`}
-              onClick={() => handleTypeChange('official')}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <RadioGroupItem value="official" id="official" />
-                <Label htmlFor="official" className="font-semibold cursor-pointer">
-                  API Oficial (Meta)
-                </Label>
-              </div>
-              <p className="text-xs text-muted-foreground ml-6">
-                Recomendado para estabilidade. Requer aprovação do Meta Business.
-              </p>
-            </div>
-            <div
-              className={`border p-4 rounded-xl cursor-pointer transition-all ${whatsAppConfig.connectionType === 'web' ? 'border-[#25D366] bg-[#25D366]/5 ring-1 ring-[#25D366]/20' : 'hover:bg-muted/50 border-border'}`}
-              onClick={() => handleTypeChange('web')}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <RadioGroupItem
-                  value="web"
-                  id="web"
-                  className={
-                    whatsAppConfig.connectionType === 'web' ? 'border-[#25D366] text-[#25D366]' : ''
-                  }
-                />
-                <Label htmlFor="web" className="font-semibold cursor-pointer">
-                  Web API (QR Code)
-                </Label>
-              </div>
-              <p className="text-xs text-muted-foreground ml-6">
-                Conexão rápida vinculada a um aparelho físico via escaneamento do WhatsApp.
-              </p>
-            </div>
-          </RadioGroup>
+            <SelectTrigger className="w-[300px]">
+              <SelectValue placeholder="Selecione o provedor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Desconectado</SelectItem>
+              <SelectItem value="z-api">Z-api</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
-          {whatsAppConfig.connectionType === 'official' ? (
-            <WhatsAppOfficialConfig />
-          ) : (
-            <WhatsAppWebConfig />
-          )}
+        {config.provider === 'z-api' && (
+          <div className="space-y-5 animate-fade-in border-t border-border pt-5">
+            <div className="space-y-2">
+              <Label>Instance ID</Label>
+              <Input
+                placeholder="Ex: 3B7...9E2"
+                value={config.instance_id || ''}
+                onChange={(e) => setConfig({ ...config, instance_id: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <Label>Token</Label>
+                <Input
+                  type="password"
+                  placeholder="Seu Token Z-api"
+                  value={config.token || ''}
+                  onChange={(e) => setConfig({ ...config, token: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Client Token</Label>
+                <Input
+                  type="password"
+                  placeholder="Seu Client Token de Segurança"
+                  value={config.client_token || ''}
+                  onChange={(e) => setConfig({ ...config, client_token: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 bg-muted/30 p-4 rounded-xl border">
+              <h4 className="text-sm font-semibold">Configuração de Webhook (Z-api Panel)</h4>
+              <p className="text-xs text-muted-foreground mb-2">
+                Copie a URL abaixo e cole no painel do Z-api em "Webhooks" (Eventos de Mensagem
+                Recebida).
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={webhookUrl}
+                  className="bg-background font-mono text-xs text-primary/80 flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(webhookUrl)
+                    toast.success('Webhook URL copiada!')
+                  }}
+                  title="Copiar URL"
+                  className="shrink-0 bg-background"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="pt-4 border-t border-border flex justify-end">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-slate-900 text-white gap-2 px-6"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Salvar Configurações
+          </Button>
         </div>
       </CardContent>
     </Card>

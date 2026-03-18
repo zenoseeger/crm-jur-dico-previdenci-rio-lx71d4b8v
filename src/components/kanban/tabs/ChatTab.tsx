@@ -1,7 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Send, Bot, KeyRound, CheckCircle2 } from 'lucide-react'
-import { Lead, ChatMessage } from '@/types'
-import { MOCK_CHAT } from '@/lib/mockData'
+import { Lead, Message, DbWhatsAppConfig } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -11,16 +10,58 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import useLeadStore from '@/stores/useLeadStore'
 import { useAdminStore } from '@/stores/useAdminStore'
+import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
 
 export function ChatTab({ lead }: { lead: Lead }) {
-  const [messages, setMessages] = useState(
-    MOCK_CHAT.filter((c) => c.leadId === lead.id || c.leadId === 'l1'),
-  )
+  const { user } = useAuth()
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [sendAsLead, setSendAsLead] = useState(false)
+  const [config, setConfig] = useState<DbWhatsAppConfig | null>(null)
 
   const { toggleLeadAI, markAITriggered } = useLeadStore()
   const { aiConfig } = useAdminStore()
+
+  useEffect(() => {
+    if (!user || !lead.id) return
+
+    supabase
+      .from('messages')
+      .select('*')
+      .eq('lead_id', lead.id)
+      .order('created_at')
+      .then((res) => {
+        if (res.data) setMessages(res.data)
+      })
+
+    supabase
+      .from('whatsapp_configs')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+      .then((res) => {
+        if (res.data) setConfig(res.data)
+      })
+
+    const sub = supabase
+      .channel(`msgs_${lead.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `lead_id=eq.${lead.id}` },
+        (p) => {
+          setMessages((prev) => {
+            if (prev.find((m) => m.id === p.new.id)) return prev
+            return [...prev, p.new as Message]
+          })
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(sub)
+    }
+  }, [user, lead.id])
 
   const aiEnabledForLead = lead.aiEnabled !== false
   const globalAiEnabled = aiConfig.enabled
@@ -28,21 +69,59 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const isWaitingKeyword =
     globalAiEnabled && aiEnabledForLead && aiConfig.triggerMode === 'keyword' && !lead.aiTriggered
 
-  const sendMessage = (e: React.FormEvent) => {
+  const sendMessageToDbAndZapi = async (
+    text: string,
+    direction: 'inbound' | 'outbound',
+    isAi: boolean = false,
+  ) => {
+    if (!user) return
+
+    const newMsg = {
+      user_id: user.id,
+      lead_id: lead.id,
+      content: isAi ? `[IA] ${text}` : text,
+      direction,
+      message_type: 'text',
+    }
+
+    const { data } = await supabase.from('messages').insert(newMsg).select().single()
+    if (data) {
+      setMessages((prev) => {
+        if (prev.find((m) => m.id === data.id)) return prev
+        return [...prev, data as Message]
+      })
+    }
+
+    if (
+      direction === 'outbound' &&
+      config?.provider === 'z-api' &&
+      config.instance_id &&
+      config.token
+    ) {
+      const phone = lead.phone.replace(/\D/g, '')
+      const formattedPhone = phone.length <= 11 ? `55${phone}` : phone
+      fetch(
+        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/send-text`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': config.client_token || '',
+          },
+          body: JSON.stringify({ phone: formattedPhone, message: text }),
+        },
+      ).catch(console.error)
+    }
+  }
+
+  const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim()) return
 
-    const newMsg: ChatMessage = {
-      id: Date.now().toString(),
-      leadId: lead.id,
-      sender: sendAsLead ? 'lead' : 'sdr',
-      text: input,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }
-
-    const nextMessages = [...messages, newMsg]
-    setMessages(nextMessages)
+    const userText = input
     setInput('')
+
+    await sendMessageToDbAndZapi(userText, sendAsLead ? 'inbound' : 'outbound')
 
     if (sendAsLead && aiEnabledForLead && globalAiEnabled) {
       let shouldTrigger = false
@@ -50,7 +129,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
       if (aiConfig.triggerMode === 'always' || lead.aiTriggered) {
         shouldTrigger = true
       } else if (aiConfig.triggerMode === 'keyword') {
-        const msgText = newMsg.text.toLowerCase()
+        const msgText = userText.toLowerCase()
         const kw = aiConfig.triggerKeyword.toLowerCase()
         if (aiConfig.triggerCondition === 'equals' && msgText.trim() === kw.trim()) {
           shouldTrigger = true
@@ -60,24 +139,10 @@ export function ChatTab({ lead }: { lead: Lead }) {
       }
 
       if (shouldTrigger) {
-        if (!lead.aiTriggered) {
-          markAITriggered(lead.id)
-        }
+        if (!lead.aiTriggered) markAITriggered(lead.id)
         setTimeout(() => {
-          const previousMsgs = nextMessages.slice(-4)
-          const contextStr = previousMsgs
-            .map((m) => `${m.sender === 'lead' ? 'Lead' : 'Atendente'}: ${m.text}`)
-            .join(' | ')
-            .substring(0, 120)
-
-          const aiResponse: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            leadId: lead.id,
-            sender: 'ai',
-            text: `Baseando-me no contexto anterior ("...${contextStr}...") e consultando a Base de Conhecimento do escritório, compreendi sua dúvida. Como posso auxiliar com as documentações restantes?`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          }
-          setMessages((prev) => [...prev, aiResponse])
+          const aiResponseText = `Baseando-me no contexto anterior e consultando a Base de Conhecimento do escritório, compreendi sua dúvida. Como posso auxiliar com as documentações restantes?`
+          sendMessageToDbAndZapi(aiResponseText, 'outbound', true)
         }, 1500)
       }
     }
@@ -133,11 +198,6 @@ export function ChatTab({ lead }: { lead: Lead }) {
               onCheckedChange={(val) => toggleLeadAI(lead.id, !val)}
               className="scale-75 data-[state=checked]:bg-destructive"
               disabled={!globalAiEnabled}
-              title={
-                !globalAiEnabled
-                  ? 'Agente está desativado globalmente'
-                  : 'Desativar assistente IA para este lead'
-              }
             />
             <Label
               htmlFor="ai-disable-toggle"
@@ -154,24 +214,20 @@ export function ChatTab({ lead }: { lead: Lead }) {
 
       <ScrollArea className="flex-1 p-4">
         <div className="flex flex-col gap-3 pb-4">
-          <div className="text-center my-4">
-            <span className="bg-card text-muted-foreground text-[10px] px-2 py-1 rounded-md shadow-sm border border-border/50">
-              Hoje
-            </span>
-          </div>
           {messages.map((msg) => {
-            const isLead = msg.sender === 'lead'
-            const isAi = msg.sender === 'ai'
+            const isInbound = msg.direction === 'inbound'
+            const isAi = msg.content.startsWith('[IA] ')
+            const displayText = isAi ? msg.content.replace('[IA] ', '') : msg.content
 
             return (
               <div
                 key={msg.id}
-                className={cn('flex w-full', isLead ? 'justify-start' : 'justify-end')}
+                className={cn('flex w-full', isInbound ? 'justify-start' : 'justify-end')}
               >
                 <div
                   className={cn(
                     'max-w-[80%] rounded-lg p-3 shadow-sm relative text-sm animate-fade-in-up',
-                    isLead
+                    isInbound
                       ? 'bg-card border border-border/50 text-foreground rounded-tl-none'
                       : isAi
                         ? 'bg-primary/5 border border-primary/20 text-foreground rounded-tr-none'
@@ -183,30 +239,36 @@ export function ChatTab({ lead }: { lead: Lead }) {
                       <Bot className="w-3 h-3" /> IA Triage
                     </span>
                   )}
-                  {msg.sender === 'sdr' && (
+                  {!isInbound && !isAi && (
                     <span className="text-[10px] font-bold text-primary-foreground/80 mb-1 block">
                       Equipe
                     </span>
                   )}
-
-                  <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-
+                  <p className="leading-relaxed whitespace-pre-wrap">{displayText}</p>
                   <div
                     className={cn(
                       'text-[9px] mt-1 text-right',
-                      isLead
+                      isInbound
                         ? 'text-muted-foreground'
                         : isAi
                           ? 'text-primary/60'
                           : 'text-primary-foreground/70',
                     )}
                   >
-                    {msg.timestamp}
+                    {new Date(msg.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </div>
                 </div>
               </div>
             )
           })}
+          {messages.length === 0 && (
+            <div className="text-center my-4 text-muted-foreground text-xs">
+              Nenhuma mensagem no histórico.
+            </div>
+          )}
         </div>
       </ScrollArea>
 
@@ -223,11 +285,6 @@ export function ChatTab({ lead }: { lead: Lead }) {
               Simular Lead (Testar IA)
             </Label>
           </div>
-          {sendAsLead && (!aiEnabledForLead || !globalAiEnabled) && (
-            <span className="text-[10px] text-destructive font-medium flex items-center gap-1 animate-fade-in">
-              <Bot className="w-3 h-3" /> IA Silenciada
-            </span>
-          )}
         </div>
         <form onSubmit={sendMessage} className="flex gap-2">
           <Input
@@ -239,8 +296,9 @@ export function ChatTab({ lead }: { lead: Lead }) {
           <Button
             type="submit"
             size="icon"
+            disabled={!input.trim()}
             className={cn(
-              'shrink-0 rounded-full w-10 h-10 shadow-md transition-transform active:scale-95',
+              'shrink-0 rounded-full w-10 h-10 shadow-md',
               sendAsLead ? 'bg-amber-500 hover:bg-amber-600 text-white' : '',
             )}
           >

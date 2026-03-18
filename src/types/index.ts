@@ -168,6 +168,27 @@ export interface WhatsAppConfig {
   webProfilePhone?: string
 }
 
+export interface DbWhatsAppConfig {
+  id: string
+  user_id: string
+  provider: 'none' | 'z-api'
+  instance_id: string | null
+  token: string | null
+  client_token: string | null
+  created_at: string
+}
+
+export interface Message {
+  id: string
+  user_id: string
+  lead_id: string | null
+  content: string
+  direction: 'inbound' | 'outbound'
+  media_url: string | null
+  message_type: 'text' | 'image' | 'document'
+  created_at: string
+}
+
 export interface AIFlowStepMedia {
   id: string
   type: 'image' | 'video' | 'audio'
