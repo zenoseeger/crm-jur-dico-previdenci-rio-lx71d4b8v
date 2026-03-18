@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Send, Bot, KeyRound, CheckCircle2 } from 'lucide-react'
+import { Send, Bot, KeyRound, CheckCircle2, Paperclip, Loader2 } from 'lucide-react'
 import { Lead, Message, DbWhatsAppConfig } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
@@ -20,7 +20,9 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const [input, setInput] = useState('')
   const [sendAsLead, setSendAsLead] = useState(false)
   const [config, setConfig] = useState<DbWhatsAppConfig | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { toggleLeadAI, markAITriggered, markAsRead } = useLeadStore()
   const { aiConfig } = useAdminStore()
@@ -89,6 +91,8 @@ export function ChatTab({ lead }: { lead: Lead }) {
     text: string,
     direction: 'inbound' | 'outbound',
     isAi: boolean = false,
+    mediaUrl: string | null = null,
+    messageType: string = 'text',
   ) => {
     if (!user) return
 
@@ -100,7 +104,8 @@ export function ChatTab({ lead }: { lead: Lead }) {
       lead_id: lead.id,
       content: isAi ? `[IA] ${cleanText}` : cleanText,
       direction,
-      message_type: 'text',
+      message_type: messageType,
+      media_url: mediaUrl,
     }
 
     // 1. Database Consistency: Save the clean version reflecting exactly what was intended
@@ -130,18 +135,25 @@ export function ChatTab({ lead }: { lead: Lead }) {
       const formattedPhone = phone.length <= 11 ? `55${phone}` : phone
 
       try {
-        const res = await fetch(
-          `https://api.z-api.io/instances/${config.instance_id.trim()}/token/${config.token.trim()}/send-text`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Client-Token': config.client_token.trim(),
-            },
-            // Payload Sanitization: send pure cleanText exactly as provided by the user
-            body: JSON.stringify({ phone: formattedPhone, message: cleanText }),
+        let url = `https://api.z-api.io/instances/${config.instance_id.trim()}/token/${config.token.trim()}/send-text`
+        let body: any = { phone: formattedPhone, message: cleanText }
+
+        if (messageType === 'image' && mediaUrl) {
+          url = `https://api.z-api.io/instances/${config.instance_id.trim()}/token/${config.token.trim()}/send-image`
+          body = { phone: formattedPhone, image: mediaUrl, caption: cleanText }
+        } else if (messageType === 'audio' && mediaUrl) {
+          url = `https://api.z-api.io/instances/${config.instance_id.trim()}/token/${config.token.trim()}/send-audio`
+          body = { phone: formattedPhone, audio: mediaUrl }
+        }
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': config.client_token.trim(),
           },
-        )
+          body: JSON.stringify(body),
+        })
 
         if (!res.ok) {
           const errText = await res.text()
@@ -150,7 +162,13 @@ export function ChatTab({ lead }: { lead: Lead }) {
             user_id: user.id,
             event_type: 'MESSAGE_SEND_ERROR',
             message: `Erro ao enviar mensagem para ${formattedPhone}`,
-            details: { status: res.status, response: errText, text: cleanText },
+            details: {
+              status: res.status,
+              response: errText,
+              text: cleanText,
+              mediaUrl,
+              messageType,
+            },
           })
         }
       } catch (err: any) {
@@ -159,15 +177,73 @@ export function ChatTab({ lead }: { lead: Lead }) {
           user_id: user.id,
           event_type: 'MESSAGE_SEND_ERROR',
           message: `Erro de rede ao enviar para ${formattedPhone}`,
-          details: { error: err.message, text: cleanText },
+          details: { error: err.message, text: cleanText, mediaUrl, messageType },
         })
       }
     }
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('O arquivo não pode exceder 10MB.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    const isImage = file.type.startsWith('image/')
+    const isAudio = file.type.startsWith('audio/')
+    if (!isImage && !isAudio) {
+      toast.error('Apenas imagens e áudios são suportados no momento.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    setIsUploading(true)
+
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+      const filePath = `${user?.id}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat-media')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false })
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      const { data: publicUrlData } = supabase.storage.from('chat-media').getPublicUrl(filePath)
+
+      const type = isImage ? 'image' : 'audio'
+      const caption = type === 'image' ? input : ''
+
+      if (type === 'image' && input) {
+        setInput('')
+      }
+
+      await sendMessageToDbAndZapi(
+        caption,
+        sendAsLead ? 'inbound' : 'outbound',
+        false,
+        publicUrlData.publicUrl,
+        type,
+      )
+    } catch (err: any) {
+      toast.error('Erro ao fazer upload do arquivo.')
+      console.error(err)
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim()) return
+    if (!input.trim() || isUploading) return
 
     const userText = input
     setInput('')
@@ -296,20 +372,47 @@ export function ChatTab({ lead }: { lead: Lead }) {
                       Equipe
                     </span>
                   )}
-                  {msg.message_type !== 'text' && msg.media_url ? (
-                    <a
-                      href={msg.media_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs underline mb-1 block"
-                    >
-                      Ver anexo ({msg.message_type})
-                    </a>
-                  ) : null}
+
+                  {msg.message_type === 'image' && msg.media_url && (
+                    <div className="mb-2 mt-1">
+                      <a href={msg.media_url} target="_blank" rel="noreferrer">
+                        <img
+                          src={msg.media_url}
+                          alt="Anexo"
+                          className="max-w-full h-auto max-h-48 rounded-md object-cover cursor-pointer hover:opacity-90 transition-opacity border border-border/50"
+                        />
+                      </a>
+                    </div>
+                  )}
+                  {msg.message_type === 'audio' && msg.media_url && (
+                    <div className="mb-2 mt-1">
+                      <audio
+                        controls
+                        src={msg.media_url}
+                        className="max-w-[220px] sm:max-w-[250px] h-10"
+                      />
+                    </div>
+                  )}
+                  {msg.message_type !== 'text' &&
+                    msg.message_type !== 'image' &&
+                    msg.message_type !== 'audio' &&
+                    msg.media_url && (
+                      <a
+                        href={msg.media_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs underline mb-1 block"
+                      >
+                        Ver anexo ({msg.message_type})
+                      </a>
+                    )}
+
                   {/* Changed <p> to <div> to avoid theoretical React hydration/runtime nesting errors with external HTML */}
-                  <div className="leading-relaxed whitespace-pre-wrap break-words">
-                    {displayText}
-                  </div>
+                  {displayText.length > 0 && (
+                    <div className="leading-relaxed whitespace-pre-wrap break-words">
+                      {displayText}
+                    </div>
+                  )}
                   <div
                     className={cn(
                       'text-[9px] mt-1 text-right',
@@ -352,17 +455,39 @@ export function ChatTab({ lead }: { lead: Lead }) {
             </Label>
           </div>
         </div>
-        <form onSubmit={sendMessage} className="flex gap-2">
+        <form onSubmit={sendMessage} className="flex gap-2 items-center">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Paperclip className="w-5 h-5" />
+            )}
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*,audio/*"
+            onChange={handleFileUpload}
+          />
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={sendAsLead ? 'Digite como Lead...' : 'Digite uma mensagem...'}
             className="flex-1 bg-muted/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary"
+            disabled={isUploading}
           />
           <Button
             type="submit"
             size="icon"
-            disabled={!input.trim()}
+            disabled={!input.trim() || isUploading}
             className={cn(
               'shrink-0 rounded-full w-10 h-10 shadow-md',
               sendAsLead ? 'bg-amber-500 hover:bg-amber-600 text-white' : '',
