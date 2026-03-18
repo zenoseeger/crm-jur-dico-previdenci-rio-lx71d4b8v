@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useEffect,
-  useCallback,
-} from 'react'
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react'
 import { Lead, Stage, Task, TaskTemplate, DocumentFile, TaskAutomation } from '@/types'
 import { processTagsForFlows, processTaskCompletionForFlows } from '@/lib/flowLogic'
 import { useAdminStore } from '@/stores/useAdminStore'
@@ -33,7 +26,13 @@ interface LeadStore {
     dueDaysOffset?: number,
   ) => Promise<void>
   deleteTaskAutomation: (id: string) => Promise<void>
-  moveLead: (id: string, to: Stage, r?: string, tags?: string[], tasks?: TaskTemplate[]) => void
+  moveLead: (
+    id: string,
+    to: Stage,
+    r?: string,
+    tags?: string[],
+    tasks?: TaskTemplate[],
+  ) => Promise<void>
   addLead: (lead: Lead) => void
   editLead: (id: string, updates: Partial<Lead>) => Promise<void>
   deleteLead: (id: string) => Promise<void>
@@ -259,107 +258,119 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     setLeads((p) => p.filter((l) => l.id !== id))
   }
 
-  const moveLead = (
+  const moveLead = async (
     leadId: string,
     to: Stage,
     r?: string,
     autoTags: string[] = [],
     autoTasks: TaskTemplate[] = [],
   ) => {
-    const stageAutomations = taskAutomations.filter((a) => a.stage === to)
-    if (stageAutomations.length > 0) {
-      toast.success(`${stageAutomations.length} tarefa(s) adicionada(s) automaticamente!`)
+    const l = leads.find((x) => x.id === leadId)
+    if (!l) return
+
+    let fetchedAutomations: any[] = []
+    if (user) {
+      const { data: dbAutomations } = await supabase
+        .from('task_automations')
+        .select('*')
+        .eq('stage', to)
+        .eq('user_id', user.id)
+
+      if (dbAutomations) {
+        fetchedAutomations = dbAutomations
+      }
+    } else {
+      fetchedAutomations = taskAutomations
+        .filter((a) => a.stage === to)
+        .map((a) => ({
+          task_title: a.taskTitle,
+          task_description: a.taskDescription,
+          due_days_offset: a.dueDaysOffset,
+        }))
     }
 
-    setLeads((prev) =>
-      prev.map((l) => {
-        if (l.id !== leadId) return l
-        const tags = Array.from(new Set([...l.tags, ...autoTags]))
-        const added = autoTasks.map((t) => ({
-          id: crypto.randomUUID(),
-          title: t.title,
-          description: t.description,
-          completed: false,
-          createdAt: new Date().toISOString(),
-        }))
+    if (fetchedAutomations.length > 0) {
+      toast.success(`${fetchedAutomations.length} tarefa(s) adicionada(s) automaticamente!`)
+    }
 
-        const addedFromAutomations = stageAutomations.map((a) => {
-          let dueDate
-          if (a.dueDaysOffset !== undefined && a.dueDaysOffset !== null) {
-            const date = new Date()
-            date.setDate(date.getDate() + a.dueDaysOffset)
-            dueDate = date.toISOString()
-          }
-          return {
-            id: crypto.randomUUID(),
-            title: a.taskTitle,
-            description: a.taskDescription || 'Criado via automação de etapa',
-            completed: false,
-            createdAt: new Date().toISOString(),
-            dueDate,
-          }
-        })
+    const tags = Array.from(new Set([...l.tags, ...autoTags]))
+    const added = autoTasks.map((t) => ({
+      id: crypto.randomUUID(),
+      title: t.title,
+      description: t.description,
+      completed: false,
+      createdAt: new Date().toISOString(),
+    }))
 
-        const allNewTasks = [...added, ...addedFromAutomations]
+    const addedFromAutomations = fetchedAutomations.map((a: any) => {
+      let dueDate
+      if (a.due_days_offset !== undefined && a.due_days_offset !== null) {
+        const date = new Date()
+        date.setDate(date.getDate() + a.due_days_offset)
+        dueDate = date.toISOString()
+      }
+      return {
+        id: crypto.randomUUID(),
+        title: a.task_title,
+        description: a.task_description || 'Criado via automação de etapa',
+        completed: false,
+        createdAt: new Date().toISOString(),
+        dueDate,
+      }
+    })
 
-        const { tasks, activeFlows } = processTagsForFlows(
-          l,
-          autoTags,
-          [...(l.tasks || []), ...allNewTasks],
-          l.activeFlows || [],
-          aiFlows,
-        )
-        const nl = { ...l, stage: to, lostReason: r || l.lostReason, tags, tasks, activeFlows }
-        updateDb(leadId, nl)
-        return nl
-      }),
+    const allNewTasks = [...added, ...addedFromAutomations]
+
+    const { tasks, activeFlows } = processTagsForFlows(
+      l,
+      autoTags,
+      [...(l.tasks || []), ...allNewTasks],
+      l.activeFlows || [],
+      aiFlows,
     )
+
+    const nl = { ...l, stage: to, lostReason: r || l.lostReason, tags, tasks, activeFlows }
+
+    setLeads((prev) => prev.map((lead) => (lead.id === leadId ? nl : lead)))
+    await updateDb(leadId, nl)
   }
 
   const toggleTask = (leadId: string, taskId: string) => {
-    setLeads((prev) =>
-      prev.map((l) => {
-        if (l.id !== leadId) return l
-        const { tasks, activeFlows } = processTaskCompletionForFlows(
-          taskId,
-          l.tasks || [],
-          l.activeFlows || [],
-          aiFlows,
-        )
-        const nl = { ...l, tasks, activeFlows }
-        updateDb(leadId, nl)
-        return nl
-      }),
+    const l = leads.find((x) => x.id === leadId)
+    if (!l) return
+    const { tasks, activeFlows } = processTaskCompletionForFlows(
+      taskId,
+      l.tasks || [],
+      l.activeFlows || [],
+      aiFlows,
     )
+    const nl = { ...l, tasks, activeFlows }
+    setLeads((prev) => prev.map((x) => (x.id === leadId ? nl : x)))
+    updateDb(leadId, nl)
   }
 
   const addTagToLead = (leadId: string, tag: string) => {
-    setLeads((prev) =>
-      prev.map((l) => {
-        if (l.id !== leadId || l.tags.includes(tag)) return l
-        const { tasks, activeFlows } = processTagsForFlows(
-          l,
-          [tag],
-          l.tasks || [],
-          l.activeFlows || [],
-          aiFlows,
-        )
-        const nl = { ...l, tags: [...l.tags, tag], tasks, activeFlows }
-        updateDb(leadId, nl)
-        return nl
-      }),
+    const l = leads.find((x) => x.id === leadId)
+    if (!l || l.tags.includes(tag)) return
+    const { tasks, activeFlows } = processTagsForFlows(
+      l,
+      [tag],
+      l.tasks || [],
+      l.activeFlows || [],
+      aiFlows,
     )
+    const nl = { ...l, tags: [...l.tags, tag], tasks, activeFlows }
+    setLeads((prev) => prev.map((x) => (x.id === leadId ? nl : x)))
+    updateDb(leadId, nl)
   }
 
-  const addTask = (leadId: string, task: Task) =>
-    setLeads((p) =>
-      p.map((l) => {
-        if (l.id !== leadId) return l
-        const nl = { ...l, tasks: [task, ...(l.tasks || [])] }
-        updateDb(leadId, nl)
-        return nl
-      }),
-    )
+  const addTask = (leadId: string, task: Task) => {
+    const l = leads.find((x) => x.id === leadId)
+    if (!l) return
+    const nl = { ...l, tasks: [task, ...(l.tasks || [])] }
+    setLeads((p) => p.map((x) => (x.id === leadId ? nl : x)))
+    updateDb(leadId, nl)
+  }
 
   const addLead = async (lead: Lead) => {
     setLeads((p) => [lead, ...p])
@@ -389,48 +400,47 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const markAsRead = (id: string) =>
-    setLeads((p) =>
-      p.map((l) => {
-        if (l.id !== id) return l
-        const nl = { ...l, unread: false }
-        updateDb(id, nl)
-        return nl
-      }),
-    )
+  const markAsRead = (id: string) => {
+    const l = leads.find((x) => x.id === id)
+    if (!l) return
+    const nl = { ...l, unread: false }
+    setLeads((p) => p.map((x) => (x.id === id ? nl : x)))
+    updateDb(id, nl)
+  }
 
   const updateLeadStageNames = (pipelineId: string, o: string, n: string) => {
+    const affected = leads.filter((l) => l.pipelineId === pipelineId && l.stage === o)
+    if (affected.length === 0) return
+
     setLeads((p) =>
       p.map((l) => {
         if (l.pipelineId === pipelineId && l.stage === o) {
-          const nl = { ...l, stage: n }
-          updateDb(l.id, nl)
-          return nl
+          return { ...l, stage: n }
         }
         return l
       }),
     )
+
+    affected.forEach((l) => {
+      updateDb(l.id, { stage: n })
+    })
   }
 
-  const toggleLeadAI = (leadId: string, enabled: boolean) =>
-    setLeads((p) =>
-      p.map((l) => {
-        if (l.id !== leadId) return l
-        const nl = { ...l, aiEnabled: enabled }
-        updateDb(leadId, nl)
-        return nl
-      }),
-    )
+  const toggleLeadAI = (leadId: string, enabled: boolean) => {
+    const l = leads.find((x) => x.id === leadId)
+    if (!l) return
+    const nl = { ...l, aiEnabled: enabled }
+    setLeads((p) => p.map((x) => (x.id === leadId ? nl : x)))
+    updateDb(leadId, nl)
+  }
 
-  const markAITriggered = (leadId: string) =>
-    setLeads((p) =>
-      p.map((l) => {
-        if (l.id !== leadId) return l
-        const nl = { ...l, aiTriggered: true }
-        updateDb(leadId, nl)
-        return nl
-      }),
-    )
+  const markAITriggered = (leadId: string) => {
+    const l = leads.find((x) => x.id === leadId)
+    if (!l) return
+    const nl = { ...l, aiTriggered: true }
+    setLeads((p) => p.map((x) => (x.id === leadId ? nl : x)))
+    updateDb(leadId, nl)
+  }
 
   const addDocument = async (leadId: string, doc: DocumentFile) => {
     setLeads((p) =>

@@ -185,22 +185,28 @@ export type Database = {
       task_automations: {
         Row: {
           created_at: string
+          due_days_offset: number | null
           id: string
           stage: string
+          task_description: string | null
           task_title: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          due_days_offset?: number | null
           id?: string
           stage: string
+          task_description?: string | null
           task_title: string
           user_id: string
         }
         Update: {
           created_at?: string
+          due_days_offset?: number | null
           id?: string
           stage?: string
+          task_description?: string | null
           task_title?: string
           user_id?: string
         }
@@ -403,6 +409,8 @@ export const Constants = {
 //   stage: text (not null)
 //   task_title: text (not null)
 //   created_at: timestamp with time zone (not null, default: now())
+//   task_description: text (nullable)
+//   due_days_offset: integer (nullable)
 
 // --- CONSTRAINTS ---
 // Table: clients
