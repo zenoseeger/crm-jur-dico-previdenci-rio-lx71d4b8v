@@ -25,6 +25,8 @@ interface LeadStore {
   fetchLeads: () => Promise<void>
   moveLead: (id: string, to: Stage, r?: string, tags?: string[], tasks?: TaskTemplate[]) => void
   addLead: (lead: Lead) => void
+  editLead: (id: string, updates: Partial<Lead>) => Promise<void>
+  deleteLead: (id: string) => Promise<void>
   markAsRead: (leadId: string) => void
   updateLeadStageNames: (pipelineId: string, oldName: string, newName: string) => void
   toggleTask: (leadId: string, taskId: string) => void
@@ -141,6 +143,33 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     if (updates.aiTriggered !== undefined) map.ai_triggered = updates.aiTriggered
     if (updates.unread !== undefined) map.unread = updates.unread
     if (Object.keys(map).length > 0) await supabase.from('leads').update(map).eq('id', id)
+  }
+
+  const editLead = async (id: string, updates: Partial<Lead>) => {
+    const map: any = {}
+    if (updates.name !== undefined) map.name = updates.name
+    if (updates.email !== undefined) map.email = updates.email
+    if (updates.phone !== undefined) map.phone = updates.phone
+    if (updates.stage !== undefined) map.stage = updates.stage
+    if (updates.benefitType !== undefined) map.benefit_type = updates.benefitType
+    if (updates.city !== undefined) map.city = updates.city
+    if (updates.assignee !== undefined) map.assignee = updates.assignee
+    if (updates.heat !== undefined) map.heat = updates.heat
+
+    if (Object.keys(map).length > 0) {
+      const { error } = await supabase.from('leads').update(map).eq('id', id)
+      if (error) throw error
+    }
+
+    setLeads((p) => p.map((l) => (l.id === id ? { ...l, ...updates } : l)))
+  }
+
+  const deleteLead = async (id: string) => {
+    const { error } = await supabase.from('leads').delete().eq('id', id)
+    if (error) throw error
+
+    if (selectedLeadId === id) setSelectedLeadId(null)
+    setLeads((p) => p.filter((l) => l.id !== id))
   }
 
   const moveLead = (
@@ -340,6 +369,8 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     setCurrentPipelineId,
     moveLead,
     addLead,
+    editLead,
+    deleteLead,
     markAsRead,
     updateLeadStageNames,
     toggleTask,

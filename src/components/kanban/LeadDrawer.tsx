@@ -13,6 +13,7 @@ import { DocsTab } from './tabs/DocsTab'
 import { SummaryTab, QualTab, HistoryTab } from './tabs/InfoTabs'
 import { TasksTab } from './tabs/TasksTab'
 import { Badge } from '@/components/ui/badge'
+import { LeadActions } from './LeadActions'
 
 export function LeadDrawer() {
   const { selectedLead, setSelectedLead, markAsRead } = useLeadStore()
@@ -46,6 +47,7 @@ export function LeadDrawer() {
                 </Badge>
               </SheetDescription>
             </div>
+            <LeadActions lead={selectedLead} />
           </div>
         </SheetHeader>
 
