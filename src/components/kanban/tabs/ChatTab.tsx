@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Send, Bot, KeyRound, CheckCircle2 } from 'lucide-react'
 import { Lead, Message, DbWhatsAppConfig } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -12,6 +12,7 @@ import useLeadStore from '@/stores/useLeadStore'
 import { useAdminStore } from '@/stores/useAdminStore'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 export function ChatTab({ lead }: { lead: Lead }) {
   const { user } = useAuth()
@@ -19,12 +20,17 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const [input, setInput] = useState('')
   const [sendAsLead, setSendAsLead] = useState(false)
   const [config, setConfig] = useState<DbWhatsAppConfig | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  const { toggleLeadAI, markAITriggered } = useLeadStore()
+  const { toggleLeadAI, markAITriggered, markAsRead } = useLeadStore()
   const { aiConfig } = useAdminStore()
 
   useEffect(() => {
     if (!user || !lead.id) return
+
+    if (lead.unread) {
+      markAsRead(lead.id)
+    }
 
     supabase
       .from('messages')
@@ -54,6 +60,10 @@ export function ChatTab({ lead }: { lead: Lead }) {
             if (prev.find((m) => m.id === p.new.id)) return prev
             return [...prev, p.new as Message]
           })
+
+          if (p.new.direction === 'inbound') {
+            markAsRead(lead.id)
+          }
         },
       )
       .subscribe()
@@ -62,6 +72,12 @@ export function ChatTab({ lead }: { lead: Lead }) {
       supabase.removeChannel(sub)
     }
   }, [user, lead.id])
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
 
   const aiEnabledForLead = lead.aiEnabled !== false
   const globalAiEnabled = aiConfig.enabled
@@ -84,7 +100,12 @@ export function ChatTab({ lead }: { lead: Lead }) {
       message_type: 'text',
     }
 
-    const { data } = await supabase.from('messages').insert(newMsg).select().single()
+    const { data, error } = await supabase.from('messages').insert(newMsg).select().single()
+    if (error) {
+      toast.error('Erro ao salvar a mensagem no banco de dados.')
+      return
+    }
+
     if (data) {
       setMessages((prev) => {
         if (prev.find((m) => m.id === data.id)) return prev
@@ -100,17 +121,39 @@ export function ChatTab({ lead }: { lead: Lead }) {
     ) {
       const phone = lead.phone.replace(/\D/g, '')
       const formattedPhone = phone.length <= 11 ? `55${phone}` : phone
-      fetch(
-        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/send-text`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Client-Token': config.client_token || '',
+
+      try {
+        const res = await fetch(
+          `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/send-text`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Client-Token': config.client_token || '',
+            },
+            body: JSON.stringify({ phone: formattedPhone, message: text }),
           },
-          body: JSON.stringify({ phone: formattedPhone, message: text }),
-        },
-      ).catch(console.error)
+        )
+
+        if (!res.ok) {
+          const errText = await res.text()
+          toast.error('Falha ao enviar mensagem no WhatsApp.')
+          await supabase.from('whatsapp_logs').insert({
+            user_id: user.id,
+            event_type: 'MESSAGE_SEND_ERROR',
+            message: `Erro ao enviar mensagem para ${formattedPhone}`,
+            details: { status: res.status, response: errText, text },
+          })
+        }
+      } catch (err: any) {
+        toast.error('Erro de rede ao comunicar com Z-API.')
+        await supabase.from('whatsapp_logs').insert({
+          user_id: user.id,
+          event_type: 'MESSAGE_SEND_ERROR',
+          message: `Erro de rede ao enviar para ${formattedPhone}`,
+          details: { error: err.message, text },
+        })
+      }
     }
   }
 
@@ -244,6 +287,16 @@ export function ChatTab({ lead }: { lead: Lead }) {
                       Equipe
                     </span>
                   )}
+                  {msg.message_type !== 'text' && msg.media_url ? (
+                    <a
+                      href={msg.media_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs underline mb-1 block"
+                    >
+                      Ver anexo ({msg.message_type})
+                    </a>
+                  ) : null}
                   <p className="leading-relaxed whitespace-pre-wrap">{displayText}</p>
                   <div
                     className={cn(
@@ -255,7 +308,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
                           : 'text-primary-foreground/70',
                     )}
                   >
-                    {new Date(msg.created_at).toLocaleTimeString([], {
+                    {new Date(msg.created_at || new Date()).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
@@ -269,6 +322,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
               Nenhuma mensagem no histórico.
             </div>
           )}
+          <div ref={scrollRef} />
         </div>
       </ScrollArea>
 

@@ -21,20 +21,18 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payload = await req.json()
-    console.log('Webhook payload received')
+    console.log('Webhook payload received', JSON.stringify(payload))
+
+    if (payload.fromMe) {
+      return new Response('ok - ignored fromMe', { status: 200, headers: corsHeaders })
+    }
+
+    if (payload.isGroup) {
+      return new Response('ok - ignored group', { status: 200, headers: corsHeaders })
+    }
 
     const instanceId = payload.instanceId
     const phone = payload.phone
-    const content =
-      payload.text?.message ||
-      payload.image?.caption ||
-      payload.document?.caption ||
-      '[Media/Unknown]'
-    const mediaUrl = payload.image?.imageUrl || payload.document?.documentUrl || null
-
-    let messageType = 'text'
-    if (payload.image) messageType = 'image'
-    if (payload.document) messageType = 'document'
 
     if (!instanceId || !phone) {
       return new Response('Missing required fields (instanceId, phone)', {
@@ -42,6 +40,33 @@ Deno.serve(async (req: Request) => {
         headers: corsHeaders,
       })
     }
+
+    let content = '[Mensagem/Mídia]'
+    if (payload.text?.message) content = payload.text.message
+    else if (payload.audio) content = '[Áudio recebido]'
+    else if (payload.video) content = payload.video.caption || '[Vídeo recebido]'
+    else if (payload.image) content = payload.image.caption || '[Imagem recebida]'
+    else if (payload.document)
+      content = payload.document.caption || payload.document.fileName || '[Documento recebido]'
+    else if (payload.sticker) content = '[Figurinha recebida]'
+    else if (payload.location) content = '[Localização recebida]'
+    else if (payload.contacts) content = '[Contato recebido]'
+
+    const mediaUrl =
+      payload.image?.imageUrl ||
+      payload.document?.documentUrl ||
+      payload.audio?.audioUrl ||
+      payload.video?.videoUrl ||
+      null
+
+    let messageType = 'text'
+    if (payload.image) messageType = 'image'
+    else if (payload.document) messageType = 'document'
+    else if (payload.audio) messageType = 'audio'
+    else if (payload.video) messageType = 'video'
+    else if (payload.sticker) messageType = 'sticker'
+    else if (payload.location) messageType = 'location'
+    else if (payload.contacts) messageType = 'contact'
 
     const { data: config } = await supabase
       .from('whatsapp_configs')
@@ -110,21 +135,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { error: insertError } = await supabase.from('messages').insert({
-      user_id: config.user_id,
-      lead_id: leadId,
-      content,
-      direction: 'inbound',
-      media_url: mediaUrl,
-      message_type: messageType,
-    })
-
-    if (insertError) {
-      console.error('Insert error:', insertError)
-      return new Response('Database Error', { status: 500, headers: corsHeaders })
-    }
-
     if (leadId) {
+      const { error: insertError } = await supabase.from('messages').insert({
+        user_id: config.user_id,
+        lead_id: leadId,
+        content,
+        direction: 'inbound',
+        media_url: mediaUrl,
+        message_type: messageType,
+      })
+
+      if (insertError) {
+        console.error('Insert error:', insertError)
+        return new Response('Database Error', { status: 500, headers: corsHeaders })
+      }
+
       await supabase.from('leads').update({ unread: true }).eq('id', leadId)
     }
 
