@@ -42,16 +42,20 @@ export function WhatsAppConfig() {
   }, [fetchConfig])
 
   const checkStatus = useCallback(async () => {
-    if (config.provider !== 'z-api' || !config.instance_id || !config.token) return
+    const instanceId = config.instance_id?.trim()
+    const token = config.token?.trim()
+    const clientToken = config.client_token?.trim()
+
+    if (config.provider !== 'z-api' || !instanceId || !token) return
     try {
-      const headers: any = {}
-      if (config.client_token) {
+      const headers: Record<string, string> = {}
+      if (clientToken) {
         // Map securely to 'Client-Token' header as Z-API expects
-        headers['Client-Token'] = config.client_token
+        headers['Client-Token'] = clientToken
       }
 
       const res = await fetch(
-        `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
+        `https://api.z-api.io/instances/${instanceId}/token/${token}/status`,
         { headers },
       )
       if (res.ok) {
@@ -87,9 +91,9 @@ export function WhatsAppConfig() {
 
     const updatePayload = {
       provider: config.provider,
-      instance_id: config.instance_id,
-      token: config.token,
-      client_token: config.client_token,
+      instance_id: config.instance_id?.trim() || null,
+      token: config.token?.trim() || null,
+      client_token: config.client_token?.trim() || null,
     }
 
     let result
