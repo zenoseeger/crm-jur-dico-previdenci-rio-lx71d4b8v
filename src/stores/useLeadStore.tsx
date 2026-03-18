@@ -9,9 +9,12 @@ interface LeadStore {
   selectedLead: Lead | null
   searchQuery: string
   currentPipelineId: string | null
+  isLoading: boolean
+  error: string | null
   setSearchQuery: (q: string) => void
   setSelectedLead: (lead: Lead | null) => void
   setCurrentPipelineId: (id: string | null) => void
+  fetchLeads: () => Promise<void>
   moveLead: (id: string, to: Stage, r?: string, tags?: string[], tasks?: TaskTemplate[]) => void
   addLead: (lead: Lead) => void
   markAsRead: (leadId: string) => void
@@ -33,72 +36,100 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPipelineId, setCurrentPipelineId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { aiFlows } = useAdminStore()
 
   const selectedLead = leads.find((l) => l.id === selectedLeadId) || null
 
   const fetchLeads = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    setIsLoading(true)
+    setError(null)
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
 
-    const isAdmin = user.email === 'zhseeger@gmail.com'
+      if (authError || !user) {
+        setIsLoading(false)
+        return
+      }
 
-    let leadsQuery = supabase.from('leads').select('*')
-    let docsQuery = supabase.from('documents').select('*')
+      const isAdmin = user.email === 'zhseeger@gmail.com'
 
-    if (!isAdmin) {
-      leadsQuery = leadsQuery.eq('user_id', user.id)
-      docsQuery = docsQuery.eq('user_id', user.id)
-    }
+      let leadsQuery = supabase.from('leads').select('*').order('created_at', { ascending: false })
+      let docsQuery = supabase.from('documents').select('*')
 
-    const [{ data: dbLeads }, { data: dbDocs }] = await Promise.all([leadsQuery, docsQuery])
+      if (!isAdmin) {
+        leadsQuery = leadsQuery.eq('user_id', user.id)
+        docsQuery = docsQuery.eq('user_id', user.id)
+      }
 
-    if (dbLeads) {
-      setLeads(
-        dbLeads.map((l) => ({
-          id: l.id,
-          name: l.name,
-          phone: l.phone,
-          email: l.email || '',
-          pipelineId: l.pipeline_id || 'p1',
-          stage: l.stage,
-          heat: (l.heat as any) || 'Morno',
-          tags: l.tags || [],
-          timeInStage: l.time_in_stage || '0m',
-          unread: l.unread,
-          benefitType: l.benefit_type || '',
-          city: l.city || '',
-          assignee: l.assignee || '',
-          aiScore: l.ai_score || 0,
-          aiEnabled: l.ai_enabled,
-          aiTriggered: l.ai_triggered,
-          tasks: l.tasks || [],
-          activeFlows: l.active_flows || [],
-          lostReason: l.notes || '',
-          notes: l.notes || '',
-          createdAt: l.created_at,
-          documents:
-            dbDocs
-              ?.filter((d) => d.lead_id === l.id)
-              .map((d) => ({
-                id: d.id,
-                name: d.name,
-                url: d.file_url,
-                size: d.size || 0,
-                type: d.type || '',
-                uploadDate: d.created_at,
-                leadId: d.lead_id,
-              })) || [],
-        })),
-      )
+      const [leadsRes, docsRes] = await Promise.all([leadsQuery, docsQuery])
+
+      if (leadsRes.error) throw new Error(leadsRes.error.message)
+      if (docsRes.error) throw new Error(docsRes.error.message)
+
+      if (leadsRes.data) {
+        setLeads(
+          leadsRes.data.map((l) => ({
+            id: l.id,
+            name: l.name,
+            phone: l.phone,
+            email: l.email || '',
+            pipelineId: l.pipeline_id || 'p1',
+            stage: l.stage,
+            heat: (l.heat as any) || 'Morno',
+            tags: l.tags || [],
+            timeInStage: l.time_in_stage || '0m',
+            unread: l.unread,
+            benefitType: l.benefit_type || '',
+            city: l.city || '',
+            assignee: l.assignee || '',
+            aiScore: l.ai_score || 0,
+            aiEnabled: l.ai_enabled,
+            aiTriggered: l.ai_triggered,
+            tasks: l.tasks || [],
+            activeFlows: l.active_flows || [],
+            lostReason: l.notes || '',
+            notes: l.notes || '',
+            createdAt: l.created_at,
+            documents:
+              docsRes.data
+                ?.filter((d) => d.lead_id === l.id)
+                .map((d) => ({
+                  id: d.id,
+                  name: d.name,
+                  url: d.file_url,
+                  size: d.size || 0,
+                  type: d.type || '',
+                  uploadDate: d.created_at,
+                  leadId: d.lead_id,
+                })) || [],
+          })),
+        )
+      }
+    } catch (err: any) {
+      console.error('Error fetching leads:', err)
+      setError(err.message || 'Falha ao carregar leads.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    const sub = supabase.auth.onAuthStateChange((e, s) => (s?.user ? fetchLeads() : setLeads([])))
+    const sub = supabase.auth.onAuthStateChange((e, s) => {
+      if (s?.user) {
+        fetchLeads()
+      } else {
+        setLeads([])
+        setIsLoading(false)
+      }
+    })
+
     fetchLeads()
+
     return () => sub.data.subscription.unsubscribe()
   }, [])
 
@@ -312,6 +343,9 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     selectedLead,
     searchQuery,
     currentPipelineId,
+    isLoading,
+    error,
+    fetchLeads,
     setSearchQuery,
     setCurrentPipelineId,
     moveLead,

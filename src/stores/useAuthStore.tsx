@@ -97,14 +97,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     setUsers(getStoredUsers())
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Auth session error:', error)
+      }
       if (session?.user) {
         setUser({
           id: session.user.id,
           name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
           email: session.user.email || '',
-          role: 'Admin',
+          role: session.user.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR',
         })
+      } else {
+        setUser(null)
       }
       setIsLoading(false)
     })
@@ -117,11 +122,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           id: session.user.id,
           name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
           email: session.user.email || '',
-          role: 'Admin',
+          role: session.user.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR',
         })
       } else {
         setUser(null)
       }
+      setIsLoading(false)
     })
 
     return () => subscription.unsubscribe()
