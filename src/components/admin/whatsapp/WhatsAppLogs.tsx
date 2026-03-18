@@ -24,7 +24,7 @@ export function WhatsAppLogs({ userId }: { userId: string }) {
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(10)
+        .limit(20)
       if (data) setLogs(data)
     }
 
@@ -41,7 +41,7 @@ export function WhatsAppLogs({ userId }: { userId: string }) {
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          setLogs((prev) => [payload.new, ...prev].slice(0, 10))
+          setLogs((prev) => [payload.new, ...prev].slice(0, 20))
         },
       )
       .subscribe()
@@ -52,39 +52,57 @@ export function WhatsAppLogs({ userId }: { userId: string }) {
   }, [userId])
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[140px]">Data/Hora</TableHead>
-          <TableHead className="w-[160px]">Evento</TableHead>
-          <TableHead>Mensagem</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {logs.map((log) => (
-          <TableRow key={log.id}>
-            <TableCell className="text-xs text-muted-foreground">
-              {format(new Date(log.created_at), 'dd/MM HH:mm', { locale: ptBR })}
-            </TableCell>
-            <TableCell>
-              <Badge
-                variant="outline"
-                className="text-[10px] uppercase bg-muted/50 border-muted-foreground/20"
-              >
-                {log.event_type}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-sm">{log.message}</TableCell>
-          </TableRow>
-        ))}
-        {logs.length === 0 && (
+    <div className="max-h-[500px] overflow-auto relative">
+      <Table>
+        <TableHeader className="sticky top-0 bg-background/95 backdrop-blur z-10 shadow-sm border-b">
           <TableRow>
-            <TableCell colSpan={3} className="text-center py-6 text-muted-foreground text-sm">
-              Nenhum log de conexão registrado.
-            </TableCell>
+            <TableHead className="w-[140px] whitespace-nowrap">Data/Hora</TableHead>
+            <TableHead className="w-[160px] whitespace-nowrap">Tipo de Evento</TableHead>
+            <TableHead>Mensagem</TableHead>
+            <TableHead className="w-[280px]">Detalhes</TableHead>
           </TableRow>
-        )}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {logs.map((log) => (
+            <TableRow key={log.id}>
+              <TableCell className="text-xs text-muted-foreground whitespace-nowrap align-top pt-4">
+                {format(new Date(log.created_at), 'dd/MM HH:mm:ss', { locale: ptBR })}
+              </TableCell>
+              <TableCell className="align-top pt-4">
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] uppercase border-muted-foreground/20 whitespace-nowrap ${
+                    log.event_type === 'connection_error' || log.event_type === 'ERROR'
+                      ? 'bg-destructive/10 text-destructive border-destructive/30 font-bold'
+                      : 'bg-muted/50 text-muted-foreground'
+                  }`}
+                >
+                  {log.event_type}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-sm font-medium align-top pt-4 text-slate-800 dark:text-slate-200">
+                {log.message}
+              </TableCell>
+              <TableCell className="align-top py-3">
+                {log.details && Object.keys(log.details).length > 0 ? (
+                  <div className="bg-muted/50 border border-border/50 p-2 rounded-md text-[10px] font-mono text-muted-foreground max-h-[120px] overflow-y-auto w-full whitespace-pre-wrap break-all shadow-inner">
+                    {JSON.stringify(log.details, null, 2)}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground text-xs italic">-</span>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+          {logs.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center py-10 text-muted-foreground text-sm">
+                Nenhum log de diagnóstico registrado ainda.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   )
 }

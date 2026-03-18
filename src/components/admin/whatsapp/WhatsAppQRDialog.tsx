@@ -50,18 +50,20 @@ export function WhatsAppQRDialog({
             <div className="text-center space-y-6 w-full animate-in fade-in zoom-in-95 duration-200">
               <Alert
                 variant="destructive"
-                className="text-left bg-destructive/5 border-destructive/20 text-destructive"
+                className="text-left bg-destructive/5 border-destructive/20 text-destructive shadow-sm"
               >
-                <AlertTitle className="flex items-center gap-2 font-semibold text-base">
+                <AlertTitle className="flex items-center gap-2 font-semibold text-base mb-2">
                   <AlertCircle className="w-5 h-5" /> Falha na Conexão
                 </AlertTitle>
-                <AlertDescription className="text-destructive/90 text-sm mt-2 flex flex-col gap-3">
-                  <span>{error}</span>
+                <AlertDescription className="text-destructive/90 text-sm flex flex-col gap-4">
+                  <div className="bg-destructive/10 p-3 rounded border border-destructive/20 font-medium">
+                    A instância retornou um erro: {error}
+                  </div>
                   {requiresReset && (
                     <Button
                       onClick={onReset}
                       variant="outline"
-                      className="w-full border-destructive/30 hover:bg-destructive/10 text-destructive hover:text-destructive"
+                      className="w-full border-destructive/40 hover:bg-destructive text-destructive hover:text-white transition-colors"
                     >
                       Forçar Reinicialização da Instância
                     </Button>

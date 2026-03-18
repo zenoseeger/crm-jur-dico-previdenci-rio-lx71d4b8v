@@ -57,29 +57,40 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
           setQrImage(data.value)
           await logWhatsAppEvent(user.id, 'QR_GENERATED', 'QR Code gerado com sucesso.')
         } else {
-          setQrError('A API não retornou a imagem do QR Code.')
+          const errMsg = 'A API não retornou a imagem do QR Code.'
+          setQrError(errMsg)
+          await updateDbStatus('error', errMsg)
+          await logWhatsAppEvent(user.id, 'connection_error', errMsg, { response: data })
         }
-      } else if (res.status === 400) {
-        setQrError(
-          'A instância retornou um erro 400. Ela pode estar travada em um processo anterior ou precisando de reinicialização manual.',
-        )
-        setRequiresReset(true)
-        await updateDbStatus('error', 'Erro 400 ao gerar QR Code')
+      } else {
+        let errorBody = {}
+        try {
+          errorBody = await res.json()
+        } catch (e) {
+          // Ignore parsing errors for empty or non-JSON bodies
+        }
+
+        const errorMessage =
+          (errorBody as any).error || (errorBody as any).message || `Erro HTTP ${res.status}`
+
+        setQrError(errorMessage)
+        setRequiresReset(res.status >= 400 && res.status < 500)
+        await updateDbStatus('error', errorMessage)
         await logWhatsAppEvent(
           user.id,
-          'ERROR',
-          'Erro 400 ao gerar QR Code. Possível travamento.',
-          { status: 400 },
+          'connection_error',
+          `Falha ao gerar QR Code: ${errorMessage}`,
+          {
+            status: res.status,
+            body: errorBody,
+          },
         )
-      } else {
-        setQrError(`Erro ao buscar QR Code: HTTP ${res.status}`)
-        await updateDbStatus('error', `Erro HTTP ${res.status}`)
-        await logWhatsAppEvent(user.id, 'ERROR', `Erro HTTP ${res.status} ao gerar QR Code`)
       }
     } catch (error: any) {
-      setQrError('Erro de rede ao comunicar com Z-api.')
-      await updateDbStatus('error', 'Erro de rede')
-      await logWhatsAppEvent(user.id, 'ERROR', 'Erro de rede ao buscar QR', {
+      const errMsg = error.message || 'Erro de rede ao comunicar com Z-api.'
+      setQrError(errMsg)
+      await updateDbStatus('error', errMsg)
+      await logWhatsAppEvent(user.id, 'connection_error', `Falha de conexão: ${errMsg}`, {
         error: error.message,
       })
     } finally {
@@ -120,7 +131,9 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
       setQrModalOpen(false)
     } catch (error: any) {
       toast.error('Erro ao reiniciar instância.')
-      await logWhatsAppEvent(user.id, 'ERROR', 'Erro ao forçar reset', { error: error.message })
+      await logWhatsAppEvent(user.id, 'connection_error', 'Erro ao forçar reset', {
+        error: error.message,
+      })
     }
   }
 
@@ -141,9 +154,14 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
         const now = new Date().toISOString()
         await supabase
           .from('whatsapp_configs')
-          .update({ webhook_verified_at: now })
+          .update({ webhook_verified_at: now, status: 'connected', last_error: null })
           .eq('id', config.id)
-        setConfig((p: any) => ({ ...p, webhook_verified_at: now }))
+        setConfig((p: any) => ({
+          ...p,
+          webhook_verified_at: now,
+          status: 'connected',
+          last_error: null,
+        }))
         await logWhatsAppEvent(
           user.id,
           'WEBHOOK_VERIFIED',
@@ -151,11 +169,15 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
         )
         toast.success('Webhook verificado e configurado com sucesso!')
       } else {
-        throw new Error(`HTTP ${res.status}`)
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || `HTTP ${res.status}`)
       }
     } catch (error: any) {
       toast.error('Falha ao testar webhook.')
-      await logWhatsAppEvent(user.id, 'ERROR', 'Falha ao testar Webhook', { error: error.message })
+      await updateDbStatus('error', `Falha no Webhook: ${error.message}`)
+      await logWhatsAppEvent(user.id, 'connection_error', 'Falha ao testar Webhook', {
+        error: error.message,
+      })
     }
   }
 
