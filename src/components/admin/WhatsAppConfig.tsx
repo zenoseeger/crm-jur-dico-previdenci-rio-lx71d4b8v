@@ -165,27 +165,44 @@ export function WhatsAppConfig() {
     setQrError(null)
     setQrImage(null)
 
+    // Pre-Connection Instance Validation
     try {
       const statusRes = await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
       )
+
       if (statusRes.ok) {
         const statusData = await statusRes.json()
         if (statusData.connected) {
           setConnectionStatus('connected')
           setQrModalOpen(false)
           toast.info('A instância já está conectada.')
+          setQrLoading(false)
+          return
+        }
+      } else {
+        if (statusRes.status === 401 || statusRes.status === 403) {
+          setQrError('Token ou Instance ID inválidos. Verifique suas credenciais.')
+          setQrLoading(false)
+          return
+        } else if (statusRes.status === 404) {
+          setQrError('Instância não encontrada na Z-api.')
+          setQrLoading(false)
           return
         }
       }
     } catch (err) {
       console.error('Erro ao verificar status antes de conectar', err)
+      setQrError('Erro de rede ao verificar o status da instância.')
+      setQrLoading(false)
+      return
     }
 
     try {
       const res = await fetch(
         `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/qr-code/image`,
       )
+
       if (res.ok) {
         const data = await res.json()
         if (data.value) {
@@ -194,21 +211,13 @@ export function WhatsAppConfig() {
           setQrError('A API não retornou a imagem do QR Code.')
         }
       } else if (res.status === 400) {
-        const checkRes = await fetch(
-          `https://api.z-api.io/instances/${config.instance_id}/token/${config.token}/status`,
-        )
-        if (checkRes.ok) {
-          const checkData = await checkRes.json()
-          if (checkData.connected) {
-            setConnectionStatus('connected')
-            setQrModalOpen(false)
-            toast.info('A instância já estava conectada.')
-            return
-          }
-        }
         setQrError(
           'Não foi possível gerar o QR Code. Por favor, verifique se a sua instância na Z-api está ativa.',
         )
+      } else if (res.status === 401 || res.status === 403) {
+        setQrError('Token ou Instance ID inválidos. Verifique suas credenciais.')
+      } else if (res.status === 404) {
+        setQrError('Instância não encontrada na Z-api.')
       } else {
         setQrError(`Erro ao buscar QR Code: HTTP ${res.status}`)
       }
@@ -420,22 +429,24 @@ export function WhatsAppConfig() {
                 <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
               </div>
             ) : qrError ? (
-              <div className="text-center space-y-4 w-full">
+              <div className="text-center space-y-6 w-full animate-in fade-in zoom-in-95 duration-200">
                 <Alert
                   variant="destructive"
                   className="text-left bg-destructive/5 border-destructive/20 text-destructive"
                 >
-                  <AlertTitle className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" /> Falha na Conexão
+                  <AlertTitle className="flex items-center gap-2 font-semibold text-base">
+                    <AlertCircle className="w-5 h-5" /> Falha na Conexão
                   </AlertTitle>
-                  <AlertDescription>{qrError}</AlertDescription>
+                  <AlertDescription className="text-destructive/90 text-sm mt-2">
+                    {qrError}
+                  </AlertDescription>
                 </Alert>
-                <Button variant="outline" onClick={handleConnect} className="w-full">
+                <Button variant="outline" onClick={handleConnect} className="w-full h-11">
                   Tentar Novamente
                 </Button>
               </div>
             ) : qrImage ? (
-              <div className="space-y-6 flex flex-col items-center">
+              <div className="space-y-6 flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <img src={qrImage} alt="QR Code" className="w-64 h-64 object-contain" />
                 </div>
