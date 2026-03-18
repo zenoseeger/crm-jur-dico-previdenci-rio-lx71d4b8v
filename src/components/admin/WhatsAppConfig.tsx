@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -13,8 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Copy, Loader2, Save } from 'lucide-react'
+import { Copy, Loader2, Save, CheckCircle2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
+
+const DEFAULT_INSTANCE_ID = '3F04FD79EF154102370DEE37F1774CBC'
+const DEFAULT_TOKEN = '194683CEB3DC29A1249EC368'
 
 export function WhatsAppConfig() {
   const { user } = useAuth()
@@ -31,11 +35,29 @@ export function WhatsAppConfig() {
         .eq('user_id', user.id)
         .single()
 
-      if (data) setConfig(data)
+      if (data) {
+        setConfig(data)
+      } else {
+        setConfig({
+          provider: 'none',
+          instance_id: DEFAULT_INSTANCE_ID,
+          token: DEFAULT_TOKEN,
+          client_token: '',
+        })
+      }
       setLoading(false)
     }
     fetchConfig()
   }, [user])
+
+  const handleProviderChange = (v: 'none' | 'z-api') => {
+    setConfig((prev) => ({
+      ...prev,
+      provider: v,
+      instance_id: prev.instance_id || (v === 'z-api' ? DEFAULT_INSTANCE_ID : ''),
+      token: prev.token || (v === 'z-api' ? DEFAULT_TOKEN : ''),
+    }))
+  }
 
   const handleSave = async () => {
     if (!user) return
@@ -65,7 +87,11 @@ export function WhatsAppConfig() {
     setSaving(false)
   }
 
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zapi-webhook`
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bnuripqdjxiympxhlthy.supabase.co'
+  const webhookUrl = `${baseUrl}/functions/v1/zapi-webhook`
+
+  const isConnected =
+    config.id && config.provider === 'z-api' && !!config.instance_id && !!config.token
 
   if (loading) {
     return (
@@ -78,7 +104,18 @@ export function WhatsAppConfig() {
   return (
     <Card className="border-slate-200 dark:border-slate-800 shadow-sm max-w-3xl">
       <CardHeader>
-        <CardTitle>Integração Z-api</CardTitle>
+        <div className="flex items-center justify-between mb-1">
+          <CardTitle>Integração Z-api</CardTitle>
+          {isConnected ? (
+            <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Conectado
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="gap-1.5 text-muted-foreground">
+              <XCircle className="w-3.5 h-3.5" /> Desconectado
+            </Badge>
+          )}
+        </div>
         <CardDescription>
           Configure o provedor para habilitar o envio e recebimento de mensagens, além do uso de IA
           pelo WhatsApp.
@@ -89,13 +126,13 @@ export function WhatsAppConfig() {
           <Label className="text-base font-semibold">Provedor de Conexão</Label>
           <Select
             value={config.provider}
-            onValueChange={(v: any) => setConfig({ ...config, provider: v })}
+            onValueChange={(v: 'none' | 'z-api') => handleProviderChange(v)}
           >
             <SelectTrigger className="w-[300px]">
               <SelectValue placeholder="Selecione o provedor" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Desconectado</SelectItem>
+              <SelectItem value="none">Nenhum (Desconectado)</SelectItem>
               <SelectItem value="z-api">Z-api</SelectItem>
             </SelectContent>
           </Select>
@@ -104,9 +141,9 @@ export function WhatsAppConfig() {
         {config.provider === 'z-api' && (
           <div className="space-y-5 animate-fade-in border-t border-border pt-5">
             <div className="space-y-2">
-              <Label>Instance ID</Label>
+              <Label>ID da instância (Instance ID)</Label>
               <Input
-                placeholder="Ex: 3B7...9E2"
+                placeholder="Ex: 3F04FD79EF154102370DEE37F1774CBC"
                 value={config.instance_id || ''}
                 onChange={(e) => setConfig({ ...config, instance_id: e.target.value })}
               />
@@ -114,19 +151,19 @@ export function WhatsAppConfig() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <Label>Token</Label>
+                <Label>Token da instância</Label>
                 <Input
                   type="password"
-                  placeholder="Seu Token Z-api"
+                  placeholder="Ex: 194683CEB3DC29A1249EC368"
                   value={config.token || ''}
                   onChange={(e) => setConfig({ ...config, token: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Client Token</Label>
+                <Label>Client Token (Segurança)</Label>
                 <Input
                   type="password"
-                  placeholder="Seu Client Token de Segurança"
+                  placeholder="Seu Client Token (opcional/recomendado)"
                   value={config.client_token || ''}
                   onChange={(e) => setConfig({ ...config, client_token: e.target.value })}
                 />
@@ -137,7 +174,7 @@ export function WhatsAppConfig() {
               <h4 className="text-sm font-semibold">Configuração de Webhook (Z-api Panel)</h4>
               <p className="text-xs text-muted-foreground mb-2">
                 Copie a URL abaixo e cole no painel do Z-api em "Webhooks" (Eventos de Mensagem
-                Recebida).
+                Recebida) para que o CRM receba as respostas dos leads.
               </p>
               <div className="flex gap-2">
                 <Input

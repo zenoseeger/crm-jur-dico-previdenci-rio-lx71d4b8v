@@ -182,6 +182,47 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          direction: string | null
+          id: string
+          lead_id: string | null
+          media_url: string | null
+          message_type: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          direction?: string | null
+          id?: string
+          lead_id?: string | null
+          media_url?: string | null
+          message_type?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          direction?: string | null
+          id?: string
+          lead_id?: string | null
+          media_url?: string | null
+          message_type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'messages_lead_id_fkey'
+            columns: ['lead_id']
+            isOneToOne: false
+            referencedRelation: 'leads'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       task_automations: {
         Row: {
           created_at: string
@@ -208,6 +249,36 @@ export type Database = {
           stage?: string
           task_description?: string | null
           task_title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_configs: {
+        Row: {
+          client_token: string | null
+          created_at: string | null
+          id: string
+          instance_id: string | null
+          provider: string | null
+          token: string | null
+          user_id: string
+        }
+        Insert: {
+          client_token?: string | null
+          created_at?: string | null
+          id?: string
+          instance_id?: string | null
+          provider?: string | null
+          token?: string | null
+          user_id: string
+        }
+        Update: {
+          client_token?: string | null
+          created_at?: string | null
+          id?: string
+          instance_id?: string | null
+          provider?: string | null
+          token?: string | null
           user_id?: string
         }
         Relationships: []
@@ -403,6 +474,15 @@ export const Constants = {
 //   ai_triggered: boolean (nullable, default: false)
 //   tasks: jsonb (nullable, default: '[]'::jsonb)
 //   active_flows: jsonb (nullable, default: '[]'::jsonb)
+// Table: messages
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   lead_id: uuid (nullable)
+//   content: text (not null)
+//   direction: text (nullable)
+//   media_url: text (nullable)
+//   message_type: text (nullable, default: 'text'::text)
+//   created_at: timestamp with time zone (nullable, default: now())
 // Table: task_automations
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -411,6 +491,14 @@ export const Constants = {
 //   created_at: timestamp with time zone (not null, default: now())
 //   task_description: text (nullable)
 //   due_days_offset: integer (nullable)
+// Table: whatsapp_configs
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   provider: text (nullable, default: 'none'::text)
+//   instance_id: text (nullable)
+//   token: text (nullable)
+//   client_token: text (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
 
 // --- CONSTRAINTS ---
 // Table: clients
@@ -425,9 +513,20 @@ export const Constants = {
 // Table: leads
 //   PRIMARY KEY leads_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY leads_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: messages
+//   CHECK messages_direction_check: CHECK ((direction = ANY (ARRAY['inbound'::text, 'outbound'::text])))
+//   FOREIGN KEY messages_lead_id_fkey: FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+//   CHECK messages_message_type_check: CHECK ((message_type = ANY (ARRAY['text'::text, 'image'::text, 'document'::text])))
+//   PRIMARY KEY messages_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY messages_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: task_automations
 //   PRIMARY KEY task_automations_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY task_automations_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: whatsapp_configs
+//   PRIMARY KEY whatsapp_configs_pkey: PRIMARY KEY (id)
+//   CHECK whatsapp_configs_provider_check: CHECK ((provider = ANY (ARRAY['none'::text, 'z-api'::text])))
+//   FOREIGN KEY whatsapp_configs_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+//   UNIQUE whatsapp_configs_user_id_key: UNIQUE (user_id)
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: clients
@@ -460,6 +559,10 @@ export const Constants = {
 //   Policy "authenticated_update_leads" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+// Table: messages
+//   Policy "authenticated_all_messages" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//     WITH CHECK: (auth.uid() = user_id)
 // Table: task_automations
 //   Policy "authenticated_delete_task_automations" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (auth.uid() = user_id)
@@ -470,3 +573,11 @@ export const Constants = {
 //   Policy "authenticated_update_task_automations" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (auth.uid() = user_id)
 //     WITH CHECK: (auth.uid() = user_id)
+// Table: whatsapp_configs
+//   Policy "authenticated_all_whatsapp_configs" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//     WITH CHECK: (auth.uid() = user_id)
+
+// --- INDEXES ---
+// Table: whatsapp_configs
+//   CREATE UNIQUE INDEX whatsapp_configs_user_id_key ON public.whatsapp_configs USING btree (user_id)
