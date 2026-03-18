@@ -15,7 +15,7 @@ import {
 import { useAdminStore } from '@/stores/useAdminStore'
 import useLeadStore from '@/stores/useLeadStore'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlignLeft } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function SummaryTab({ lead }: { lead: Lead }) {
@@ -44,6 +44,26 @@ export function SummaryTab({ lead }: { lead: Lead }) {
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Responsável</p>
           <p className="text-sm font-medium">{lead.assignee}</p>
         </div>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold flex items-center gap-2">
+          <AlignLeft className="w-4 h-4 text-muted-foreground" />
+          Notas de Qualificação
+        </h4>
+        {lead.notes ? (
+          <div className="p-3.5 bg-muted/30 rounded-lg border border-border/50 text-sm text-foreground whitespace-pre-wrap leading-relaxed shadow-sm">
+            {lead.notes}
+          </div>
+        ) : (
+          <div className="p-4 border border-dashed rounded-lg bg-muted/20 text-center">
+            <p className="text-sm text-muted-foreground">
+              Nenhuma nota de qualificação registrada.
+            </p>
+          </div>
+        )}
       </div>
 
       <Separator />
