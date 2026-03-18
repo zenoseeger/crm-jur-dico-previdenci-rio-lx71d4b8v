@@ -15,8 +15,8 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
     const headers: any = {}
     if (isJson) headers['Content-Type'] = 'application/json'
     if (config.client_token) {
-      // Must be 'client-token' exactly as per Z-API requirements for authentication
-      headers['client-token'] = config.client_token
+      // Must be 'Client-Token' exactly as per Z-API requirements for authentication
+      headers['Client-Token'] = config.client_token
     }
     return headers
   }

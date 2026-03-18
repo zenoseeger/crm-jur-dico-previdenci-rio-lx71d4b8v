@@ -46,8 +46,8 @@ export function WhatsAppConfig() {
     try {
       const headers: any = {}
       if (config.client_token) {
-        // Map securely to 'client-token' header as Z-API expects
-        headers['client-token'] = config.client_token
+        // Map securely to 'Client-Token' header as Z-API expects
+        headers['Client-Token'] = config.client_token
       }
 
       const res = await fetch(
