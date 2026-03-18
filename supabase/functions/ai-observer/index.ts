@@ -27,14 +27,19 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // Fetch AI Config
+    // Fetch AI Config using maybeSingle to avoid errors if not configured
     const { data: aiConfig, error: configError } = await supabase
       .from('ai_configs')
       .select('*')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
-    if (configError || !aiConfig || !aiConfig.enabled || !aiConfig.api_key) {
+    if (configError) {
+      console.error('Error fetching ai_configs:', configError)
+      return new Response('AI config fetch error', { status: 200, headers: corsHeaders })
+    }
+
+    if (!aiConfig || !aiConfig.enabled || !aiConfig.api_key) {
       return new Response('AI not configured or disabled', { status: 200, headers: corsHeaders })
     }
 

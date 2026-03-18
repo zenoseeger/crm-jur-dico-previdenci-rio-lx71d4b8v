@@ -9,6 +9,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_configs: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          enabled: boolean | null
+          id: string
+          knowledge_base: string | null
+          model: string | null
+          prompt: string | null
+          qualification_prompt: string | null
+          trigger_condition: string | null
+          trigger_keyword: string | null
+          trigger_mode: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          enabled?: boolean | null
+          id?: string
+          knowledge_base?: string | null
+          model?: string | null
+          prompt?: string | null
+          qualification_prompt?: string | null
+          trigger_condition?: string | null
+          trigger_keyword?: string | null
+          trigger_mode?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          enabled?: boolean | null
+          id?: string
+          knowledge_base?: string | null
+          model?: string | null
+          prompt?: string | null
+          qualification_prompt?: string | null
+          trigger_condition?: string | null
+          trigger_keyword?: string | null
+          trigger_mode?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           benefit_type: string | null
@@ -115,6 +163,7 @@ export type Database = {
           active_flows: Json | null
           ai_enabled: boolean | null
           ai_score: number | null
+          ai_summary: string | null
           ai_triggered: boolean | null
           assignee: string | null
           benefit_type: string | null
@@ -138,6 +187,7 @@ export type Database = {
           active_flows?: Json | null
           ai_enabled?: boolean | null
           ai_score?: number | null
+          ai_summary?: string | null
           ai_triggered?: boolean | null
           assignee?: string | null
           benefit_type?: string | null
@@ -161,6 +211,7 @@ export type Database = {
           active_flows?: Json | null
           ai_enabled?: boolean | null
           ai_score?: number | null
+          ai_summary?: string | null
           ai_triggered?: boolean | null
           assignee?: string | null
           benefit_type?: string | null
@@ -466,6 +517,20 @@ export const Constants = {
 // --- COLUMN TYPES (actual PostgreSQL types) ---
 // Use this to know the real database type when writing migrations.
 // "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
+// Table: ai_configs
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   api_key: text (nullable)
+//   model: text (nullable, default: 'gpt-4o-mini'::text)
+//   prompt: text (nullable)
+//   qualification_prompt: text (nullable)
+//   enabled: boolean (nullable, default: true)
+//   knowledge_base: text (nullable)
+//   trigger_mode: text (nullable, default: 'always'::text)
+//   trigger_condition: text (nullable, default: 'contains'::text)
+//   trigger_keyword: text (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
 // Table: clients
 //   id: uuid (not null, default: gen_random_uuid())
 //   created_at: timestamp with time zone (not null, default: now())
@@ -510,6 +575,7 @@ export const Constants = {
 //   ai_triggered: boolean (nullable, default: false)
 //   tasks: jsonb (nullable, default: '[]'::jsonb)
 //   active_flows: jsonb (nullable, default: '[]'::jsonb)
+//   ai_summary: text (nullable)
 // Table: messages
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -547,6 +613,10 @@ export const Constants = {
 //   created_at: timestamp with time zone (nullable, default: now())
 
 // --- CONSTRAINTS ---
+// Table: ai_configs
+//   PRIMARY KEY ai_configs_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY ai_configs_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+//   UNIQUE ai_configs_user_id_key: UNIQUE (user_id)
 // Table: clients
 //   FOREIGN KEY clients_lead_id_fkey: FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
 //   PRIMARY KEY clients_pkey: PRIMARY KEY (id)
@@ -578,6 +648,16 @@ export const Constants = {
 //   FOREIGN KEY whatsapp_logs_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 
 // --- ROW LEVEL SECURITY POLICIES ---
+// Table: ai_configs
+//   Policy "authenticated_delete_ai_configs" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//   Policy "authenticated_insert_ai_configs" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (auth.uid() = user_id)
+//   Policy "authenticated_select_ai_configs" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//   Policy "authenticated_update_ai_configs" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//     WITH CHECK: (auth.uid() = user_id)
 // Table: clients
 //   Policy "authenticated_delete_clients" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
@@ -632,5 +712,7 @@ export const Constants = {
 //     WITH CHECK: (auth.uid() = user_id)
 
 // --- INDEXES ---
+// Table: ai_configs
+//   CREATE UNIQUE INDEX ai_configs_user_id_key ON public.ai_configs USING btree (user_id)
 // Table: whatsapp_configs
 //   CREATE UNIQUE INDEX whatsapp_configs_user_id_key ON public.whatsapp_configs USING btree (user_id)

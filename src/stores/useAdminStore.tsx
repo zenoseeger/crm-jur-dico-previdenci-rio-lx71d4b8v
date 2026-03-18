@@ -139,8 +139,12 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         .from('ai_configs')
         .select('*')
         .eq('user_id', user.id)
-        .single()
-        .then(({ data }) => {
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Error fetching AI Config:', error)
+            return
+          }
           if (data) {
             setAiConfig((p) => ({
               ...p,
