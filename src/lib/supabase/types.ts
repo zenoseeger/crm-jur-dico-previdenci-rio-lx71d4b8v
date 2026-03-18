@@ -259,26 +259,62 @@ export type Database = {
           created_at: string | null
           id: string
           instance_id: string | null
+          last_error: string | null
           provider: string | null
+          status: string | null
           token: string | null
           user_id: string
+          webhook_verified_at: string | null
         }
         Insert: {
           client_token?: string | null
           created_at?: string | null
           id?: string
           instance_id?: string | null
+          last_error?: string | null
           provider?: string | null
+          status?: string | null
           token?: string | null
           user_id: string
+          webhook_verified_at?: string | null
         }
         Update: {
           client_token?: string | null
           created_at?: string | null
           id?: string
           instance_id?: string | null
+          last_error?: string | null
           provider?: string | null
+          status?: string | null
           token?: string | null
+          user_id?: string
+          webhook_verified_at?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_logs: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          event_type: string
+          id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          event_type: string
+          id?: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          event_type?: string
+          id?: string
+          message?: string
           user_id?: string
         }
         Relationships: []
@@ -499,6 +535,16 @@ export const Constants = {
 //   token: text (nullable)
 //   client_token: text (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
+//   status: text (nullable, default: 'disconnected'::text)
+//   last_error: text (nullable)
+//   webhook_verified_at: timestamp with time zone (nullable)
+// Table: whatsapp_logs
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   event_type: text (not null)
+//   message: text (not null)
+//   details: jsonb (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
 
 // --- CONSTRAINTS ---
 // Table: clients
@@ -527,6 +573,9 @@ export const Constants = {
 //   CHECK whatsapp_configs_provider_check: CHECK ((provider = ANY (ARRAY['none'::text, 'z-api'::text])))
 //   FOREIGN KEY whatsapp_configs_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   UNIQUE whatsapp_configs_user_id_key: UNIQUE (user_id)
+// Table: whatsapp_logs
+//   PRIMARY KEY whatsapp_logs_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY whatsapp_logs_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: clients
@@ -575,6 +624,10 @@ export const Constants = {
 //     WITH CHECK: (auth.uid() = user_id)
 // Table: whatsapp_configs
 //   Policy "authenticated_all_whatsapp_configs" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//     WITH CHECK: (auth.uid() = user_id)
+// Table: whatsapp_logs
+//   Policy "authenticated_all_whatsapp_logs" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: (auth.uid() = user_id)
 //     WITH CHECK: (auth.uid() = user_id)
 

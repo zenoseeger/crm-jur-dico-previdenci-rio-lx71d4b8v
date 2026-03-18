@@ -10,7 +10,7 @@ export default function Index() {
   if (isLoading) {
     return (
       <div className="h-[calc(100vh-4rem)] w-full overflow-hidden flex flex-col p-6 gap-4 animate-fade-in">
-        <div className="flex items-center justify-between py-2 border-b bg-background/80 backdrop-blur-sm">
+        <div className="flex items-center py-2 border-b bg-background/80 backdrop-blur-sm">
           <Skeleton className="h-9 w-[280px] rounded-md" />
         </div>
         <div className="flex flex-1 gap-4 overflow-hidden mt-2">
