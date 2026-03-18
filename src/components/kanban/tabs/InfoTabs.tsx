@@ -15,7 +15,7 @@ import {
 import { useAdminStore } from '@/stores/useAdminStore'
 import useLeadStore from '@/stores/useLeadStore'
 import { Button } from '@/components/ui/button'
-import { Loader2, AlignLeft } from 'lucide-react'
+import { Loader2, AlignLeft, Bot } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function SummaryTab({ lead }: { lead: Lead }) {
@@ -68,6 +68,22 @@ export function SummaryTab({ lead }: { lead: Lead }) {
 
       <Separator />
 
+      <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 relative overflow-hidden">
+        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-bl-lg flex items-center gap-1">
+          <Bot className="w-3 h-3" /> AI Insights
+        </div>
+        <div className="flex justify-between items-center mb-3">
+          <h4 className="text-sm font-semibold">Resumo & Qualificação</h4>
+          <span className="text-lg font-bold text-primary mr-24">{lead.aiScore || 0}/100</span>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+          {lead.aiSummary ||
+            'Nenhum resumo gerado pela IA. A IA analisará as conversas automaticamente em segundo plano.'}
+        </p>
+      </div>
+
+      <Separator />
+
       <div className="space-y-3">
         <div className="flex flex-row justify-between items-center">
           <h4 className="text-sm font-semibold flex items-center gap-2">
@@ -88,8 +104,6 @@ export function SummaryTab({ lead }: { lead: Lead }) {
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
-
-      <Separator />
 
       <div className="space-y-3">
         <h4 className="text-sm font-semibold">Tags Ativas</h4>
@@ -150,17 +164,6 @@ export function SummaryTab({ lead }: { lead: Lead }) {
           </Popover>
         </div>
       </div>
-
-      <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
-        <div className="flex justify-between items-center mb-2">
-          <h4 className="text-sm font-semibold">AI Triage Score</h4>
-          <span className="text-lg font-bold text-primary">{lead.aiScore}/100</span>
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Lead com alta probabilidade de conversão. Respondeu todas as perguntas iniciais e possui
-          documentação prévia indicada.
-        </p>
-      </div>
     </div>
   )
 }
@@ -169,7 +172,7 @@ export function QualTab({ lead }: { lead: Lead }) {
   return (
     <div className="space-y-4">
       <div className="bg-card border rounded-lg p-4 space-y-4 shadow-sm">
-        <h4 className="font-semibold text-sm border-b pb-2">Dados Estruturados pela IA</h4>
+        <h4 className="font-semibold text-sm border-b pb-2">Dados Estruturados</h4>
         <div className="grid gap-3 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Tempo de Contribuição:</span>

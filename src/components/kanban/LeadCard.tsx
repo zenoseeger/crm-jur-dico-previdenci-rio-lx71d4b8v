@@ -114,7 +114,12 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
               </h4>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="cursor-help shrink-0">
+                  <div className="cursor-help shrink-0 flex items-center gap-1">
+                    {lead.aiScore > 0 && (
+                      <span className="text-[10px] font-bold text-primary bg-primary/10 px-1 rounded-sm border border-primary/20">
+                        {lead.aiScore}
+                      </span>
+                    )}
                     {!aiEnabledForLead || !globalAiEnabled ? (
                       <Ban className="w-3.5 h-3.5 text-destructive" />
                     ) : isWaitingKeyword ? (

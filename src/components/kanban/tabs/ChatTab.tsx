@@ -76,6 +76,13 @@ export function ChatTab({ lead }: { lead: Lead }) {
           }
         },
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `lead_id=eq.${lead.id}` },
+        (p) => {
+          setMessages((prev) => prev.map((m) => (m.id === p.new.id ? (p.new as Message) : m)))
+        },
+      )
       .subscribe()
 
     return () => {
@@ -115,7 +122,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
     if (!user) return
 
     // Ensure absolutely clean text, removing any leading/trailing whitespace
-    const cleanText = text.trim()
+    const cleanText = text.trim() || (messageType === 'audio' ? '[Áudio recebido]' : '')
 
     const newMsg = {
       user_id: user.id,
@@ -138,6 +145,11 @@ export function ChatTab({ lead }: { lead: Lead }) {
         if (prev.find((m) => m.id === data.id)) return prev
         return [...prev, data as Message]
       })
+
+      // Trigger Silent AI Observer Analysis in the background
+      supabase.functions
+        .invoke('ai-observer', { body: { leadId: lead.id, userId: user.id } })
+        .catch((err) => console.error('Error invoking ai-observer:', err))
     }
 
     // 2. Validation of Configuration & Clean Message Sending Logic

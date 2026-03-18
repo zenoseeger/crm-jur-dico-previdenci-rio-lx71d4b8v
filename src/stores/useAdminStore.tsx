@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import {
   TagDef,
   AIConfig,
@@ -9,6 +9,8 @@ import {
   BenefitType,
 } from '@/types'
 import { toast } from 'sonner'
+import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
 
 interface AdminStore {
   tags: TagDef[]
@@ -77,6 +79,7 @@ const initialPipelineStages: PipelineStage[] = [
 ]
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth()
   const [pipelines, setPipelines] = useState<Pipeline[]>(initialPipelines)
   const [tags, setTags] = useState<TagDef[]>(initialTags)
   const [benefitTypes, setBenefitTypes] = useState<BenefitType[]>(initialBenefitTypes)
@@ -85,13 +88,15 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     apiKey: '',
     prompt: '',
-    model: 'gpt-4o',
+    model: 'gpt-4o-mini',
     temperature: 0.7,
     enabled: true,
     knowledgeBase: '',
     triggerMode: 'always',
     triggerCondition: 'contains',
     triggerKeyword: '',
+    qualificationPrompt:
+      'Analise a conversa e dê uma nota de 0 a 100 indicando a probabilidade de fechamento.',
   })
 
   const [whatsAppConfig, setWhatsAppConfig] = useState<WhatsAppConfig>({
@@ -128,6 +133,32 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     },
   ])
 
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from('ai_configs')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setAiConfig((p) => ({
+              ...p,
+              apiKey: data.api_key || '',
+              model: data.model || 'gpt-4o-mini',
+              prompt: data.prompt || '',
+              qualificationPrompt: data.qualification_prompt || p.qualificationPrompt,
+              enabled: data.enabled ?? true,
+              knowledgeBase: data.knowledge_base || '',
+              triggerMode: data.trigger_mode || 'always',
+              triggerCondition: data.trigger_condition || 'contains',
+              triggerKeyword: data.trigger_keyword || '',
+            }))
+          }
+        })
+    }
+  }, [user])
+
   const value = {
     pipelines,
     tags,
@@ -155,7 +186,32 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       setBenefitTypes((p) => p.filter((x) => x.id !== id))
       toast.success('Produto excluído com sucesso!')
     },
-    updateAIConfig: (c: Partial<AIConfig>) => setAiConfig((p) => ({ ...p, ...c })),
+    updateAIConfig: (c: Partial<AIConfig>) => {
+      setAiConfig((p) => {
+        const updated = { ...p, ...c }
+        if (user) {
+          supabase
+            .from('ai_configs')
+            .upsert(
+              {
+                user_id: user.id,
+                api_key: updated.apiKey,
+                model: updated.model,
+                prompt: updated.prompt,
+                qualification_prompt: updated.qualificationPrompt,
+                enabled: updated.enabled,
+                knowledge_base: updated.knowledgeBase,
+                trigger_mode: updated.triggerMode,
+                trigger_condition: updated.triggerCondition,
+                trigger_keyword: updated.triggerKeyword,
+              },
+              { onConflict: 'user_id' },
+            )
+            .then()
+        }
+        return updated
+      })
+    },
     updateWhatsAppConfig: (c: Partial<WhatsAppConfig>) =>
       setWhatsAppConfig((p) => ({ ...p, ...c })),
     addPipeline: (p: Omit<Pipeline, 'id'>, steps: string[]) => {

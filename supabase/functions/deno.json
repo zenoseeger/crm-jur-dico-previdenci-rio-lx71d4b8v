@@ -1,5 +1,6 @@
 {
   "_versions": {
-    "zapi-webhook": 5
+    "zapi-webhook": 5,
+    "ai-observer": 1
   }
 }

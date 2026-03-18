@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAdminStore } from '@/stores/useAdminStore'
 import {
   Card,
@@ -39,6 +39,10 @@ export function AIStudio() {
   const [message, setMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [sandboxTriggered, setSandboxTriggered] = useState(false)
+
+  useEffect(() => {
+    setFormData(aiConfig)
+  }, [aiConfig])
 
   const handleSave = () => {
     if (!formData.apiKey.trim()) {
@@ -186,6 +190,7 @@ export function AIStudio() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="gpt-4o">gpt-4o</SelectItem>
+                    <SelectItem value="gpt-4o-mini">gpt-4o-mini</SelectItem>
                     <SelectItem value="gpt-4-turbo">gpt-4-turbo</SelectItem>
                     <SelectItem value="gpt-4">gpt-4</SelectItem>
                     <SelectItem value="gpt-3.5-turbo">gpt-3.5-turbo</SelectItem>
@@ -261,22 +266,12 @@ export function AIStudio() {
                 </div>
               )}
             </div>
-            {formData.triggerMode === 'keyword' && (
-              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-md border border-border/50">
-                O Agente permanecerá pausado para novos leads até que a mensagem deles{' '}
-                {formData.triggerCondition === 'contains' ? 'contenha' : 'seja exatamente'}{' '}
-                <span className="font-semibold text-foreground">
-                  "{formData.triggerKeyword || '...'}"
-                </span>
-                .
-              </p>
-            )}
           </div>
 
           <div className="space-y-4 pt-4 border-t">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label>System Prompt Inicial</Label>
+                <Label>System Prompt (Triage)</Label>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -295,20 +290,16 @@ export function AIStudio() {
 
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label>Base de Conhecimento (Contexto Customizado)</Label>
-                <span className="text-xs text-muted-foreground font-medium bg-primary/10 text-primary px-2 py-0.5 rounded">
-                  RAG Local Integrado
-                </span>
+                <Label>Prompt de Qualificação (AI Observer)</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-2">
-                Insira regras do escritório, FAQs, procedimentos e diretrizes legais que a IA deve
-                consultar.
+                Instruções para o observador silencioso gerar o resumo e a nota (0-100) do lead.
               </p>
               <Textarea
                 className="min-h-[100px] font-mono text-sm leading-relaxed bg-slate-50 dark:bg-slate-900 resize-none"
-                placeholder="Ex: 'Regras: Sempre confirmar se o lead possui senha do Meu INSS...'"
-                value={formData.knowledgeBase}
-                onChange={(e) => setFormData({ ...formData, knowledgeBase: e.target.value })}
+                placeholder="Ex: Avalie se o cliente já possui a idade mínima..."
+                value={formData.qualificationPrompt || ''}
+                onChange={(e) => setFormData({ ...formData, qualificationPrompt: e.target.value })}
               />
             </div>
           </div>

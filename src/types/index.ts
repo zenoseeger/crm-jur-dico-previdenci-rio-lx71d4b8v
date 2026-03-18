@@ -70,6 +70,7 @@ export interface Lead {
   city: string
   assignee: string
   aiScore: number
+  aiSummary?: string
   aiEnabled?: boolean
   aiTriggered?: boolean
   lastMessageAt?: string
@@ -146,6 +147,7 @@ export interface AIConfig {
   triggerMode: 'always' | 'keyword'
   triggerCondition: 'contains' | 'equals'
   triggerKeyword: string
+  qualificationPrompt?: string
 }
 
 export type WhatsAppConnectionType = 'official' | 'web'
@@ -185,7 +187,15 @@ export interface Message {
   content: string
   direction: 'inbound' | 'outbound'
   media_url: string | null
-  message_type: 'text' | 'image' | 'document'
+  message_type:
+    | 'text'
+    | 'image'
+    | 'document'
+    | 'audio'
+    | 'video'
+    | 'sticker'
+    | 'location'
+    | 'contact'
   created_at: string
 }
 
