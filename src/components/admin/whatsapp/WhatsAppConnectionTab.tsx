@@ -57,7 +57,7 @@ export function WhatsAppConnectionTab({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">Nenhum (Desconectado)</SelectItem>
-            <SelectItem value="z-api">Z-api</SelectItem>
+            <SelectItem value="z-api">Z-API</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -75,20 +75,23 @@ export function WhatsAppConnectionTab({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-2">
-              <Label>Token da instância</Label>
+              <Label>Token da Instância (Instance Token)</Label>
               <Input
                 type="password"
                 placeholder="Ex: 194683CEB3DC29A1249EC368"
                 value={config.token || ''}
                 onChange={(e) => setConfig({ ...config, token: e.target.value })}
               />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Utilizado apenas na URL das requisições da Z-API.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Client Token</Label>
               <div className="relative">
                 <Input
                   type={showClientToken ? 'text' : 'password'}
-                  placeholder="Seu Client Token (obrigatório para webhook)"
+                  placeholder="Seu Client Token de segurança"
                   value={config.client_token || ''}
                   onChange={(e) => setConfig({ ...config, client_token: e.target.value })}
                   className="pr-10"
@@ -107,6 +110,9 @@ export function WhatsAppConnectionTab({
                   )}
                 </Button>
               </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Utilizado como Header "client-token" (obrigatório para webhook e autenticação).
+              </p>
             </div>
           </div>
 
@@ -123,7 +129,7 @@ export function WhatsAppConnectionTab({
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 sm:flex-none"
                 onClick={onConnect}
-                disabled={!config.instance_id || !config.token}
+                disabled={!config.instance_id || !config.token || !config.client_token}
               >
                 <QrCode className="w-4 h-4 mr-2" /> Gerar QR Code e Conectar
               </Button>
@@ -131,10 +137,10 @@ export function WhatsAppConnectionTab({
           </div>
 
           <div className="space-y-2 bg-muted/30 p-4 rounded-xl border">
-            <h4 className="text-sm font-semibold">Configuração de Webhook (Z-api Panel)</h4>
+            <h4 className="text-sm font-semibold">Configuração de Webhook (Z-API Panel)</h4>
             <p className="text-xs text-muted-foreground mb-2">
               O Webhook será configurado automaticamente através da aba Diagnósticos, ou você pode
-              copiar a URL abaixo e colar no painel do Z-api.
+              copiar a URL abaixo e colar no painel da Z-API.
             </p>
             <div className="flex gap-2">
               <Input

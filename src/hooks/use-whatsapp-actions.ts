@@ -14,7 +14,10 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
   const getHeaders = (isJson = false) => {
     const headers: any = {}
     if (isJson) headers['Content-Type'] = 'application/json'
-    if (config.client_token) headers['Client-Token'] = config.client_token
+    if (config.client_token) {
+      // Must be 'client-token' exactly as per Z-API requirements for authentication
+      headers['client-token'] = config.client_token
+    }
     return headers
   }
 
@@ -29,7 +32,12 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
 
   const handleConnect = async () => {
     if (!config.instance_id || !config.token) {
-      toast.error('Informe o ID e o Token da instância primeiro.')
+      toast.error('Informe o ID e o Token da Instância primeiro.')
+      return
+    }
+
+    if (!config.client_token) {
+      toast.error('O Client Token é obrigatório para autenticar as requisições na Z-API.')
       return
     }
 
@@ -97,7 +105,7 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
         )
       }
     } catch (error: any) {
-      const errMsg = error.message || 'Erro de rede ao comunicar com Z-api.'
+      const errMsg = error.message || 'Erro de rede ao comunicar com Z-API.'
       setQrError(errMsg)
       await updateDbStatus('error', errMsg)
       await logWhatsAppEvent(user.id, 'connection_error', `Falha de conexão: ${errMsg}`, {
@@ -152,10 +160,10 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
     if (!config.instance_id || !config.token || !config.client_token) {
       if (!config.client_token) {
         toast.error(
-          'Client-Token não configurado. Por favor, preencha o campo Client Token e salve antes de testar.',
+          'Client Token não configurado. Por favor, preencha o campo Client Token e clique em Salvar antes de testar.',
         )
       } else {
-        toast.error('Configuração incompleta: Instance ID ou Token ausente.')
+        toast.error('Configuração incompleta: Instance ID ou Token da Instância ausente.')
       }
       return
     }
@@ -178,9 +186,9 @@ export function useWhatsAppActions(config: any, setConfig: any, user: any) {
       }
 
       if (!statusRes.ok) {
-        let errMsg = 'Erro desconhecido na Z-api.'
+        let errMsg = 'Erro desconhecido na Z-API.'
         if (statusRes.status === 401 || statusRes.status === 403) {
-          errMsg = 'Falha na autenticação: Client-Token inválido ou expirado.'
+          errMsg = 'Falha na autenticação: Client Token inválido ou não autorizado.'
         } else if (statusRes.status === 404) {
           errMsg = 'Instância não encontrada: Verifique o Instance ID.'
         } else if (statusRes.status === 400) {

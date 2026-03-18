@@ -46,7 +46,8 @@ export function WhatsAppConfig() {
     try {
       const headers: any = {}
       if (config.client_token) {
-        headers['Client-Token'] = config.client_token
+        // Map securely to 'client-token' header as Z-API expects
+        headers['client-token'] = config.client_token
       }
 
       const res = await fetch(
@@ -137,7 +138,7 @@ export function WhatsAppConfig() {
       <Card className="border-slate-200 dark:border-slate-800 shadow-sm max-w-4xl">
         <CardHeader className="border-b border-border/50 pb-4 mb-2">
           <div className="flex items-center justify-between mb-1">
-            <CardTitle>Integração Z-api</CardTitle>
+            <CardTitle>Integração Z-API</CardTitle>
             {config.provider === 'z-api' && (
               <Badge
                 variant="outline"
