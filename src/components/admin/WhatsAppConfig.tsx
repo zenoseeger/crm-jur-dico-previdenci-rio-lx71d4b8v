@@ -24,12 +24,17 @@ export function WhatsAppConfig() {
   useEffect(() => {
     if (!user) return
     const fetchConfig = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('whatsapp_configs')
         .select('*')
         .eq('user_id', user.id)
-        .single()
-      if (data) setConfig(data)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching WhatsApp config:', error)
+      } else if (data) {
+        setConfig(data)
+      }
       setLoading(false)
     }
     fetchConfig()

@@ -15,11 +15,17 @@ export function useWhatsAppStatus() {
     }
 
     const fetchStatus = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('whatsapp_configs')
         .select('status')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
+
+      if (error) {
+        console.error('Error fetching WhatsApp status:', error)
+        setStatus('disconnected')
+        return
+      }
 
       if (data) {
         setStatus((data.status as WhatsAppStatus) || 'disconnected')
