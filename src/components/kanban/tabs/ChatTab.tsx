@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Send, Bot, KeyRound, CheckCircle2, Paperclip, Loader2, Mic, Trash2 } from 'lucide-react'
+import {
+  Send,
+  Bot,
+  KeyRound,
+  CheckCircle2,
+  Paperclip,
+  Loader2,
+  Mic,
+  Trash2,
+  Sparkles,
+} from 'lucide-react'
 import { Lead, Message, DbWhatsAppConfig } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
@@ -18,9 +28,9 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const { user } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [sendAsLead, setSendAsLead] = useState(false)
   const [config, setConfig] = useState<DbWhatsAppConfig | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [isSummarizing, setIsSummarizing] = useState(false)
 
   // Audio recording state
   const [isRecording, setIsRecording] = useState(false)
@@ -32,7 +42,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { toggleLeadAI, markAITriggered, markAsRead } = useLeadStore()
+  const { toggleLeadAI, markAITriggered, markAsRead, updateLeadLocal } = useLeadStore()
   const { aiConfig } = useAdminStore()
 
   useEffect(() => {
@@ -111,6 +121,28 @@ export function ChatTab({ lead }: { lead: Lead }) {
 
   const isWaitingKeyword =
     globalAiEnabled && aiEnabledForLead && aiConfig.triggerMode === 'keyword' && !lead.aiTriggered
+
+  const handleSummarize = async () => {
+    if (!user) return
+    setIsSummarizing(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-observer', {
+        body: { leadId: lead.id, userId: user.id, action: 'summarize' },
+      })
+      if (error) throw error
+      if (data?.success) {
+        updateLeadLocal(lead.id, { aiSummary: data.summary, aiScore: data.score })
+        toast.success('Resumo gerado com sucesso!')
+      } else {
+        throw new Error('Falha na resposta da IA')
+      }
+    } catch (err) {
+      console.error('Summarize error:', err)
+      toast.error('Não foi possível gerar o resumo da conversa.')
+    } finally {
+      setIsSummarizing(false)
+    }
+  }
 
   const sendMessageToDbAndZapi = async (
     text: string,
@@ -255,13 +287,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
         setInput('')
       }
 
-      await sendMessageToDbAndZapi(
-        caption,
-        sendAsLead ? 'inbound' : 'outbound',
-        false,
-        publicUrlData.publicUrl,
-        type,
-      )
+      await sendMessageToDbAndZapi(caption, 'outbound', false, publicUrlData.publicUrl, type)
     } catch (err: any) {
       toast.error('Erro ao fazer upload do arquivo.')
       console.error(err)
@@ -322,7 +348,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
 
       await sendMessageToDbAndZapi(
         '', // Empty text for audio
-        sendAsLead ? 'inbound' : 'outbound',
+        'outbound',
         false,
         publicUrlData.publicUrl,
         'audio',
@@ -359,31 +385,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
     const userText = input
     setInput('')
 
-    await sendMessageToDbAndZapi(userText, sendAsLead ? 'inbound' : 'outbound')
-
-    if (sendAsLead && aiEnabledForLead && globalAiEnabled) {
-      let shouldTrigger = false
-
-      if (aiConfig.triggerMode === 'always' || lead.aiTriggered) {
-        shouldTrigger = true
-      } else if (aiConfig.triggerMode === 'keyword') {
-        const msgText = userText.toLowerCase()
-        const kw = aiConfig.triggerKeyword.toLowerCase()
-        if (aiConfig.triggerCondition === 'equals' && msgText.trim() === kw.trim()) {
-          shouldTrigger = true
-        } else if (aiConfig.triggerCondition === 'contains' && msgText.includes(kw)) {
-          shouldTrigger = true
-        }
-      }
-
-      if (shouldTrigger) {
-        if (!lead.aiTriggered) markAITriggered(lead.id)
-        setTimeout(() => {
-          const aiResponseText = `Baseando-me no contexto anterior e consultando a Base de Conhecimento do escritório, compreendi sua dúvida. Como posso auxiliar com as documentações restantes?`
-          sendMessageToDbAndZapi(aiResponseText, 'outbound', true)
-        }, 1500)
-      }
-    }
+    await sendMessageToDbAndZapi(userText, 'outbound')
   }
 
   return (
@@ -554,17 +556,21 @@ export function ChatTab({ lead }: { lead: Lead }) {
 
       <div className="p-3 bg-background border-t space-y-2">
         <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="sim-lead"
-              checked={sendAsLead}
-              onCheckedChange={setSendAsLead}
-              className="scale-75 data-[state=checked]:bg-amber-500"
-            />
-            <Label htmlFor="sim-lead" className="text-xs text-muted-foreground cursor-pointer">
-              Simular Lead (Testar IA)
-            </Label>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleSummarize}
+            disabled={isSummarizing || messages.length === 0}
+            className="text-xs h-7 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary transition-all"
+          >
+            {isSummarizing ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {isSummarizing ? 'Gerando resumo...' : 'Resumir Conversa'}
+          </Button>
         </div>
         <form onSubmit={sendMessage} className="flex gap-2 items-center w-full">
           {!isRecording && (
@@ -626,7 +632,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={sendAsLead ? 'Digite como Lead...' : 'Digite uma mensagem...'}
+                placeholder="Digite uma mensagem..."
                 className="flex-1 bg-muted/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary"
                 disabled={isUploading}
               />
@@ -644,10 +650,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
                 type="submit"
                 size="icon"
                 disabled={!input.trim() || isUploading}
-                className={cn(
-                  'shrink-0 rounded-full w-10 h-10 shadow-md transition-all',
-                  sendAsLead ? 'bg-amber-500 hover:bg-amber-600 text-white' : '',
-                )}
+                className="shrink-0 rounded-full w-10 h-10 shadow-md transition-all"
               >
                 <Send className="w-4 h-4 ml-0.5" />
               </Button>

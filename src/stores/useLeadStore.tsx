@@ -46,6 +46,7 @@ interface LeadStore {
   addDocument: (leadId: string, doc: DocumentFile) => void
   removeDocument: (leadId: string, docId: string) => void
   updateLeadNotes: (leadId: string, notes: string) => Promise<void>
+  updateLeadLocal: (id: string, updates: Partial<Lead>) => void
 }
 
 const LeadContext = createContext<LeadStore | undefined>(undefined)
@@ -270,6 +271,10 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error
     }
 
+    setLeads((p) => p.map((l) => (l.id === id ? { ...l, ...updates } : l)))
+  }
+
+  const updateLeadLocal = (id: string, updates: Partial<Lead>) => {
     setLeads((p) => p.map((l) => (l.id === id ? { ...l, ...updates } : l)))
   }
 
@@ -520,6 +525,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     moveLead,
     addLead,
     editLead,
+    updateLeadLocal,
     deleteLead,
     markAsRead,
     updateLeadStageNames,
