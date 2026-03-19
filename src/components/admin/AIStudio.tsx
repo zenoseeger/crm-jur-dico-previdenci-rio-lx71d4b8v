@@ -22,13 +22,17 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Save, Send, Sparkles, RefreshCcw, Eye, EyeOff, KeyRound } from 'lucide-react'
+import { Save, Send, Sparkles, RefreshCcw, Eye, EyeOff, KeyRound, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 export function AIStudio() {
   const { aiConfig, updateAIConfig } = useAdminStore()
-  const [formData, setFormData] = useState(aiConfig)
+  const [formData, setFormData] = useState({
+    ...aiConfig,
+    responseDelay: aiConfig.responseDelay || 0,
+    fragmentMessages: aiConfig.fragmentMessages || false,
+  })
   const [showApiKey, setShowApiKey] = useState(false)
   const [chat, setChat] = useState<{ role: 'ai' | 'user'; text: string }[]>([
     {
@@ -41,7 +45,11 @@ export function AIStudio() {
   const [sandboxTriggered, setSandboxTriggered] = useState(false)
 
   useEffect(() => {
-    setFormData(aiConfig)
+    setFormData({
+      ...aiConfig,
+      responseDelay: aiConfig.responseDelay || 0,
+      fragmentMessages: aiConfig.fragmentMessages || false,
+    })
   }, [aiConfig])
 
   const handleSave = () => {
@@ -131,7 +139,31 @@ export function AIStudio() {
 
           const data = await res.json()
           const text = data.choices[0]?.message?.content || 'Sem resposta'
-          setChat((prev) => [...prev, { role: 'ai', text }])
+
+          if (formData.responseDelay > 0) {
+            await new Promise((r) => setTimeout(r, formData.responseDelay * 1000))
+          }
+
+          if (formData.fragmentMessages) {
+            let chunks = text.split(/\n\n+/).filter((c: string) => c.trim().length > 0)
+            if (chunks.length === 1) {
+              chunks = text.split(/\n+/).filter((c: string) => c.trim().length > 0)
+            }
+            if (chunks.length === 1) {
+              chunks = text.match(/[^.!?]+[.!?]+/g) || [text]
+              chunks = chunks.map((c: string) => c.trim()).filter((c: string) => c.length > 0)
+            }
+
+            for (let i = 0; i < chunks.length; i++) {
+              const chunk = chunks[i]
+              setChat((prev) => [...prev, { role: 'ai', text: chunk }])
+              if (i < chunks.length - 1) {
+                await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 2000) + 1000))
+              }
+            }
+          } else {
+            setChat((prev) => [...prev, { role: 'ai', text }])
+          }
         } catch (err) {
           setChat((prev) => [
             ...prev,
@@ -258,6 +290,42 @@ export function AIStudio() {
                   value={[formData.temperature]}
                   onValueChange={([val]) => setFormData({ ...formData, temperature: val })}
                 />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-4 border-t">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <Label className="text-base">Ritmo da Conversa</Label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <Label>Atraso na Resposta: {formData.responseDelay}s</Label>
+                </div>
+                <Slider
+                  max={60}
+                  min={0}
+                  step={1}
+                  value={[formData.responseDelay]}
+                  onValueChange={([val]) => setFormData({ ...formData, responseDelay: val })}
+                />
+              </div>
+              <div className="space-y-2 flex flex-col justify-center">
+                <div className="flex items-center gap-3 px-4 py-2 rounded-lg border bg-muted/50 border-border/50">
+                  <div className="flex-1 space-y-1">
+                    <Label htmlFor="fragment-messages">Fragmentar Mensagens</Label>
+                    <p className="text-[10px] text-muted-foreground leading-none">
+                      Simula o ritmo de digitação humana enviando mensagens curtas em sequência.
+                    </p>
+                  </div>
+                  <Switch
+                    id="fragment-messages"
+                    checked={formData.fragmentMessages}
+                    onCheckedChange={(val) => setFormData({ ...formData, fragmentMessages: val })}
+                  />
+                </div>
               </div>
             </div>
           </div>

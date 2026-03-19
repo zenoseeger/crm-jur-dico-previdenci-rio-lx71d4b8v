@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import {
   TagDef,
-  AIConfig,
+  AIConfig as TypesAIConfig,
   WhatsAppConfig,
   PipelineStage,
   AIFlow,
@@ -11,6 +11,11 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
+
+export interface AIConfig extends TypesAIConfig {
+  responseDelay: number
+  fragmentMessages: boolean
+}
 
 interface AdminStore {
   tags: TagDef[]
@@ -98,6 +103,8 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     triggerKeyword: '',
     qualificationPrompt:
       'Analise a conversa e dê uma nota de 0 a 100 indicando a probabilidade de fechamento.',
+    responseDelay: 0,
+    fragmentMessages: false,
   })
 
   const [whatsAppConfig, setWhatsAppConfig] = useState<WhatsAppConfig>({
@@ -158,6 +165,8 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
               triggerMode: data.trigger_mode || 'always',
               triggerCondition: data.trigger_condition || 'contains',
               triggerKeyword: data.trigger_keyword || '',
+              responseDelay: (data as any).response_delay || 0,
+              fragmentMessages: (data as any).fragment_messages || false,
             }))
           }
         })
@@ -209,7 +218,9 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
                 trigger_mode: updated.triggerMode,
                 trigger_condition: updated.triggerCondition,
                 trigger_keyword: updated.triggerKeyword,
-              },
+                response_delay: updated.responseDelay,
+                fragment_messages: updated.fragmentMessages,
+              } as any,
               { onConflict: 'user_id' },
             )
             .then()

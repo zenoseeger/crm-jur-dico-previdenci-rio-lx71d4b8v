@@ -1,0 +1,3 @@
+ALTER TABLE public.ai_configs 
+ADD COLUMN IF NOT EXISTS response_delay INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS fragment_messages BOOLEAN NOT NULL DEFAULT false;
