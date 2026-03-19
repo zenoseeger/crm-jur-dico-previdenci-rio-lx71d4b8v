@@ -1,31 +1,28 @@
-import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // Use service role to ensure background tasks have access to all necessary data
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const body = await req.json().catch(() => ({}))
-    const { leadId, userId, action, messageId } = body
+    const body = await req.json().catch(() => ({}));
+    const { leadId, userId, action, messageId } = body;
 
     if (!userId) {
-      return new Response(JSON.stringify({ error: 'Missing userId' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return new Response(JSON.stringify({ error: 'Missing userId' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Fetch AI Config using maybeSingle to avoid errors if not configured
@@ -33,86 +30,57 @@ Deno.serve(async (req: Request) => {
       .from('ai_configs')
       .select('*')
       .eq('user_id', userId)
-      .maybeSingle()
+      .maybeSingle();
 
     if (configError || !aiConfig || !aiConfig.api_key) {
-      return new Response(JSON.stringify({ error: 'AI not configured or disabled' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return new Response(JSON.stringify({ error: 'AI not configured or disabled' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // --- MANUAL AUDIO TRANSCRIPTION ---
     if (action === 'transcribe_audio') {
-      if (!messageId)
-        return new Response(JSON.stringify({ error: 'Missing messageId' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-
-      const { data: msg } = await supabase.from('messages').select('*').eq('id', messageId).single()
-      if (!msg || !msg.media_url)
-        return new Response(JSON.stringify({ error: 'Message or media not found' }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+      if (!messageId) return new Response(JSON.stringify({ error: 'Missing messageId' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      
+      const { data: msg } = await supabase.from('messages').select('*').eq('id', messageId).single();
+      if (!msg || !msg.media_url) return new Response(JSON.stringify({ error: 'Message or media not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
       try {
-        const audioRes = await fetch(msg.media_url)
+        const audioRes = await fetch(msg.media_url);
         if (audioRes.ok) {
-          const audioBlob = await audioRes.blob()
-          const formData = new FormData()
-          const ext = msg.media_url.includes('.mp4')
-            ? 'm4a'
-            : msg.media_url.includes('.ogg')
-              ? 'ogg'
-              : 'webm'
-          formData.append('file', audioBlob, `audio.${ext}`)
-          formData.append('model', 'whisper-1')
+          const audioBlob = await audioRes.blob();
+          const formData = new FormData();
+          const ext = msg.media_url.includes('.mp4') ? 'm4a' : (msg.media_url.includes('.ogg') ? 'ogg' : 'webm');
+          formData.append('file', audioBlob, `audio.${ext}`);
+          formData.append('model', 'whisper-1');
 
           const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST',
-            headers: { Authorization: `Bearer ${aiConfig.api_key}` },
-            body: formData,
-          })
+            headers: { 'Authorization': `Bearer ${aiConfig.api_key}` },
+            body: formData
+          });
 
           if (whisperRes.ok) {
-            const whisperData = await whisperRes.json()
-            const content = `[Áudio Transcrito]: ${whisperData.text}`
-            await supabase.from('messages').update({ content }).eq('id', messageId)
-            return new Response(JSON.stringify({ success: true, text: whisperData.text }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
+            const whisperData = await whisperRes.json();
+            const content = `[Áudio Transcrito]: ${whisperData.text}`;
+            await supabase.from('messages').update({ content }).eq('id', messageId);
+            return new Response(JSON.stringify({ success: true, text: whisperData.text }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }});
           } else {
-            const errorText = await whisperRes.text()
-            console.error('Whisper API error:', errorText)
-            return new Response(JSON.stringify({ error: 'Whisper failed' }), {
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
+             const errorText = await whisperRes.text();
+             console.error('Whisper API error:', errorText);
+             return new Response(JSON.stringify({ error: 'Whisper failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
           }
         }
       } catch (err) {
-        console.error('Transcription error:', err)
-        return new Response(JSON.stringify({ error: 'Transcription error' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        console.error('Transcription error:', err);
+        return new Response(JSON.stringify({ error: 'Transcription error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
     }
 
     if (!leadId) {
-      return new Response(JSON.stringify({ error: 'Missing leadId' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return new Response(JSON.stringify({ error: 'Missing leadId' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (!aiConfig.enabled) {
-      return new Response(JSON.stringify({ error: 'AI disabled globally' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return new Response(JSON.stringify({ error: 'AI disabled globally' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Fetch Messages
@@ -120,64 +88,53 @@ Deno.serve(async (req: Request) => {
       .from('messages')
       .select('*')
       .eq('lead_id', leadId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: true });
 
     if (messagesError || !messages || messages.length === 0) {
-      return new Response(JSON.stringify({ error: 'No messages found' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return new Response(JSON.stringify({ error: 'No messages found' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Process Transcriptions for audio messages silently if summarizing
-    let conversationText = ''
-
+    let conversationText = '';
+    
     for (const msg of messages) {
-      let content = msg.content
+      let content = msg.content;
 
       // Auto transcribe if it's still missing and it's summarizing
-      if (
-        msg.message_type === 'audio' &&
-        msg.media_url &&
-        (content === '[Áudio recebido]' || !content)
-      ) {
+      if (msg.message_type === 'audio' && msg.media_url && (content === '[Áudio recebido]' || !content)) {
         try {
-          const audioRes = await fetch(msg.media_url)
+          const audioRes = await fetch(msg.media_url);
           if (audioRes.ok) {
-            const audioBlob = await audioRes.blob()
-            const formData = new FormData()
-            const ext = msg.media_url.includes('.mp4')
-              ? 'm4a'
-              : msg.media_url.includes('.ogg')
-                ? 'ogg'
-                : 'webm'
-            formData.append('file', audioBlob, `audio.${ext}`)
-            formData.append('model', 'whisper-1')
+            const audioBlob = await audioRes.blob();
+            const formData = new FormData();
+            const ext = msg.media_url.includes('.mp4') ? 'm4a' : (msg.media_url.includes('.ogg') ? 'ogg' : 'webm');
+            formData.append('file', audioBlob, `audio.${ext}`);
+            formData.append('model', 'whisper-1');
 
             const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
               method: 'POST',
-              headers: { Authorization: `Bearer ${aiConfig.api_key}` },
-              body: formData,
-            })
+              headers: { 'Authorization': `Bearer ${aiConfig.api_key}` },
+              body: formData
+            });
 
             if (whisperRes.ok) {
-              const whisperData = await whisperRes.json()
-              content = `[Áudio Transcrito]: ${whisperData.text}`
-              await supabase.from('messages').update({ content }).eq('id', msg.id)
+              const whisperData = await whisperRes.json();
+              content = `[Áudio Transcrito]: ${whisperData.text}`;
+              await supabase.from('messages').update({ content }).eq('id', msg.id);
             }
           }
         } catch (transcriptionErr) {
-          console.error('Error during silent transcription:', transcriptionErr)
+          console.error('Error during silent transcription:', transcriptionErr);
         }
       }
 
-      const role = msg.direction === 'inbound' ? 'Lead' : 'Atendimento'
-      conversationText += `[${new Date(msg.created_at).toLocaleString()}] ${role}: ${content}\n`
+      const role = msg.direction === 'inbound' ? 'Lead' : 'Atendimento';
+      conversationText += `[${new Date(msg.created_at).toLocaleString()}] ${role}: ${content}\n`;
     }
 
     // --- QUALIFICATION / SUMMARIZATION ---
-    let summary = ''
-    let score = 0
+    let summary = '';
+    let score = 0;
 
     if (action === 'summarize' && conversationText) {
       const systemPrompt = `You are a highly capable AI assistant acting as a silent observer in a law firm CRM.
@@ -191,14 +148,14 @@ Knowledge Base: ${aiConfig.knowledge_base || 'None'}
 Output Requirements:
 You MUST respond strictly with a valid JSON object containing exactly two keys:
 - "summary": A concise string (max 3-4 sentences) summarizing the lead's situation in Portuguese.
-- "score": An integer number between 0 and 100 representing the qualification score.`
+- "score": An integer number between 0 and 100 representing the qualification score.`;
 
       try {
         const completionRes = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${aiConfig.api_key}`,
-            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${aiConfig.api_key}`,
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             model: aiConfig.model || 'gpt-4o-mini',
@@ -206,102 +163,96 @@ You MUST respond strictly with a valid JSON object containing exactly two keys:
             temperature: 0.3,
             messages: [
               { role: 'system', content: systemPrompt },
-              { role: 'user', content: conversationText },
-            ],
-          }),
-        })
+              { role: 'user', content: conversationText }
+            ]
+          })
+        });
 
         if (completionRes.ok) {
-          const completionData = await completionRes.json()
-          const resultJson = JSON.parse(completionData.choices[0].message.content)
-          summary = resultJson.summary || ''
-          score = parseInt(resultJson.score) || 0
+          const completionData = await completionRes.json();
+          const resultJson = JSON.parse(completionData.choices[0].message.content);
+          summary = resultJson.summary || '';
+          score = parseInt(resultJson.score) || 0;
 
           await supabase
             .from('leads')
             .update({ ai_summary: summary, ai_score: score })
-            .eq('id', leadId)
+            .eq('id', leadId);
         }
       } catch (e) {
-        console.error('Error during summarization:', e)
+        console.error('Error during summarization:', e);
       }
     }
 
     // --- AI RESPONSE GENERATION (Triage) ---
     if (action !== 'summarize') {
-      const lastMsg = messages[messages.length - 1]
+      const lastMsg = messages[messages.length - 1];
       if (lastMsg && lastMsg.direction === 'inbound') {
-        const msgText = lastMsg.content || ''
-        const cleanMsg = msgText.trim().toLowerCase()
-        let shouldTrigger = false
+        const msgText = lastMsg.content || '';
+        const cleanMsg = msgText.trim().toLowerCase();
+        let shouldTrigger = false;
 
         if (aiConfig.trigger_mode === 'always') {
-          shouldTrigger = true
+          shouldTrigger = true;
         } else if (aiConfig.trigger_mode === 'keyword' && aiConfig.trigger_keyword) {
-          const kw = aiConfig.trigger_keyword.toLowerCase().trim()
+          const kw = aiConfig.trigger_keyword.toLowerCase().trim();
           if (aiConfig.trigger_condition === 'equals' && cleanMsg === kw) {
-            shouldTrigger = true
+            shouldTrigger = true;
           } else if (aiConfig.trigger_condition === 'contains' && cleanMsg.includes(kw)) {
-            shouldTrigger = true
+            shouldTrigger = true;
           }
         }
 
         if (shouldTrigger) {
-          await supabase.from('leads').update({ ai_triggered: true }).eq('id', leadId)
+          await supabase.from('leads').update({ ai_triggered: true }).eq('id', leadId);
 
-          const triagePrompt = aiConfig.prompt || 'Respond as the assistant directly to the user.'
+          const triagePrompt = aiConfig.prompt || 'Respond as the assistant directly to the user.';
           const historyMessages = messages.map((m: any) => ({
             role: m.direction === 'inbound' ? 'user' : 'assistant',
-            content: m.content,
-          }))
+            content: m.content
+          }));
 
           const chatRes = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${aiConfig.api_key}`,
-              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${aiConfig.api_key}`,
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
               model: aiConfig.model || 'gpt-4o-mini',
-              messages: [{ role: 'system', content: triagePrompt }, ...historyMessages],
+              messages: [
+                { role: 'system', content: triagePrompt },
+                ...historyMessages
+              ],
               temperature: 0.7,
-            }),
-          })
+            })
+          });
 
           if (chatRes.ok) {
-            const chatData = await chatRes.json()
-            const aiReply = chatData.choices[0]?.message?.content || ''
+            const chatData = await chatRes.json();
+            const aiReply = chatData.choices[0]?.message?.content || '';
 
             if (aiReply) {
-              const responseDelay = aiConfig.response_delay || 0
+              const responseDelay = aiConfig.response_delay || 0;
               if (responseDelay > 0) {
-                await new Promise((r) => setTimeout(r, responseDelay * 1000))
+                await new Promise(r => setTimeout(r, responseDelay * 1000));
               }
 
               if (aiConfig.fragment_messages) {
-                let chunks = aiReply.split(/\n\n+/).filter((c: string) => c.trim().length > 0)
-                if (chunks.length === 1) chunks = aiReply.match(/[^.!?]+[.!?]+/g) || [aiReply]
-                chunks = chunks.map((c: string) => c.trim()).filter((c: string) => c.length > 0)
+                let chunks = aiReply.split(/\n\n+/).filter((c: string) => c.trim().length > 0);
+                if (chunks.length === 1) chunks = aiReply.match(/[^.!?]+[.!?]+/g) || [aiReply];
+                chunks = chunks.map((c: string) => c.trim()).filter((c: string) => c.length > 0);
 
                 for (let i = 0; i < chunks.length; i++) {
                   await supabase.from('messages').insert({
-                    user_id: userId,
-                    lead_id: leadId,
-                    content: chunks[i],
-                    direction: 'outbound',
-                    message_type: 'text',
-                  })
-                  if (i < chunks.length - 1)
-                    await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 2000) + 1000))
+                    user_id: userId, lead_id: leadId, content: chunks[i], direction: 'outbound', message_type: 'text'
+                  });
+                  if (i < chunks.length - 1) await new Promise(r => setTimeout(r, Math.floor(Math.random() * 2000) + 1000));
                 }
               } else {
                 await supabase.from('messages').insert({
-                  user_id: userId,
-                  lead_id: leadId,
-                  content: aiReply,
-                  direction: 'outbound',
-                  message_type: 'text',
-                })
+                  user_id: userId, lead_id: leadId, content: aiReply, direction: 'outbound', message_type: 'text'
+                });
               }
             }
           }
@@ -311,13 +262,14 @@ You MUST respond strictly with a valid JSON object containing exactly two keys:
 
     return new Response(JSON.stringify({ success: true, summary, score }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
   } catch (err: any) {
-    console.error('AI Observer Error:', err)
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    console.error('AI Observer Error:', err);
+    return new Response(JSON.stringify({ error: err.message }), { 
+      status: 500, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    });
   }
-})
+});
