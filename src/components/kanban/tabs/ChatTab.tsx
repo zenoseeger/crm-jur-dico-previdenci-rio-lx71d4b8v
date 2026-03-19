@@ -222,14 +222,12 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
 
         if (!res.ok) {
           toast.error('Falha ao enviar mensagem no WhatsApp.')
-          await supabase
-            .from('whatsapp_logs')
-            .insert({
-              user_id: user.id,
-              event_type: 'MESSAGE_SEND_ERROR',
-              message: `Erro ao enviar`,
-              details: { status: res.status },
-            })
+          await supabase.from('whatsapp_logs').insert({
+            user_id: user.id,
+            event_type: 'MESSAGE_SEND_ERROR',
+            message: `Erro ao enviar`,
+            details: { status: res.status },
+          })
         }
       } catch (err: any) {
         toast.error('Erro de rede ao comunicar com Z-API.')
