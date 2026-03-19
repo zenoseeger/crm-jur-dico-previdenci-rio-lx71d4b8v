@@ -53,20 +53,6 @@ const getStoredUsers = (): RegisteredUser[] => {
       role: 'Admin',
       createdAt: new Date().toISOString(),
     },
-    {
-      id: 'u2',
-      name: 'SDR João',
-      email: 'joao@exemplo.com',
-      role: 'SDR',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'u3',
-      name: 'Closer Paula',
-      email: 'paula@exemplo.com',
-      role: 'Closer',
-      createdAt: new Date().toISOString(),
-    },
   ]
 
   let updated = false
@@ -134,17 +120,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const login = async (email: string, pass: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass })
-    if (error) throw new Error('E-mail ou senha inválidos.')
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass })
+    if (error) throw new Error('Email ou senha inválidos.')
+
+    if (data?.session?.user) {
+      setUser({
+        id: data.session.user.id,
+        name:
+          data.session.user.user_metadata?.name || data.session.user.email?.split('@')[0] || 'User',
+        email: data.session.user.email || '',
+        role: data.session.user.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR',
+      })
+    }
   }
 
   const register = async (name: string, email: string, pass: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password: pass,
       options: { data: { name } },
     })
     if (error) throw new Error(error.message)
+
+    if (data?.session?.user) {
+      setUser({
+        id: data.session.user.id,
+        name:
+          data.session.user.user_metadata?.name || data.session.user.email?.split('@')[0] || 'User',
+        email: data.session.user.email || '',
+        role: data.session.user.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR',
+      })
+    }
   }
 
   const logout = async () => {

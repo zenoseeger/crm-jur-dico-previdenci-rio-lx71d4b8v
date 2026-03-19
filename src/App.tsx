@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ThemeProvider } from 'next-themes'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -24,56 +25,58 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 
 const App = () => (
-  <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-    <SupabaseAuthProvider>
-      <StoreAuthProvider>
-        <TooltipProvider>
-          <AdminProvider>
-            <ClientProvider>
-              <LeadProvider>
-                <Toaster />
-                <Sonner position="top-center" expand={true} richColors />
-                <Routes>
-                  {/* Public Routes - Defined explicitly before any layout wrappers */}
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+      <SupabaseAuthProvider>
+        <StoreAuthProvider>
+          <TooltipProvider>
+            <AdminProvider>
+              <ClientProvider>
+                <LeadProvider>
+                  <Toaster />
+                  <Sonner position="top-center" expand={true} richColors />
+                  <Routes>
+                    {/* Public Routes - Defined explicitly before any layout wrappers */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
 
-                  {/* Protected Routes enclosed in Layout */}
-                  <Route
-                    path="/"
-                    element={
-                      <RequireAuth>
-                        <Layout />
-                      </RequireAuth>
-                    }
-                  >
-                    <Route index element={<Index />} />
-                    <Route path="conversas" element={<Conversations />} />
-                    <Route path="tarefas" element={<Tasks />} />
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="clientes" element={<Clients />} />
-                    <Route path="relatorios" element={<Reports />} />
-                    <Route path="configuracoes" element={<Settings />} />
+                    {/* Protected Routes enclosed in Layout */}
                     <Route
-                      path="administracao"
+                      path="/"
                       element={
-                        <RequireAdmin>
-                          <Administration />
-                        </RequireAdmin>
+                        <RequireAuth>
+                          <Layout />
+                        </RequireAuth>
                       }
-                    />
+                    >
+                      <Route index element={<Index />} />
+                      <Route path="conversas" element={<Conversations />} />
+                      <Route path="tarefas" element={<Tasks />} />
+                      <Route path="dashboard" element={<Dashboard />} />
+                      <Route path="clientes" element={<Clients />} />
+                      <Route path="relatorios" element={<Reports />} />
+                      <Route path="configuracoes" element={<Settings />} />
+                      <Route
+                        path="administracao"
+                        element={
+                          <RequireAdmin>
+                            <Administration />
+                          </RequireAdmin>
+                        }
+                      />
 
-                    {/* Catch-all Route for 404 - Placed securely inside protected routes */}
-                    <Route path="*" element={<NotFound />} />
-                  </Route>
-                </Routes>
-              </LeadProvider>
-            </ClientProvider>
-          </AdminProvider>
-        </TooltipProvider>
-      </StoreAuthProvider>
-    </SupabaseAuthProvider>
-  </BrowserRouter>
+                      {/* Catch-all Route for 404 - Placed securely inside protected routes */}
+                      <Route path="*" element={<NotFound />} />
+                    </Route>
+                  </Routes>
+                </LeadProvider>
+              </ClientProvider>
+            </AdminProvider>
+          </TooltipProvider>
+        </StoreAuthProvider>
+      </SupabaseAuthProvider>
+    </BrowserRouter>
+  </ThemeProvider>
 )
 
 export default App

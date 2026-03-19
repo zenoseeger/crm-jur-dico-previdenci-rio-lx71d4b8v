@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   AlertCircle,
   XCircle,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -18,6 +20,7 @@ import { LogoutConfirm } from '@/components/auth/LogoutConfirm'
 import { NewLeadDialog } from '@/components/kanban/NewLeadDialog'
 import { useWhatsAppStatus } from '@/hooks/use-whatsapp-status'
 import { cn } from '@/lib/utils'
+import { useTheme } from 'next-themes'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,9 +34,12 @@ export function Header() {
   const { searchQuery, setSearchQuery } = useLeadStore()
   const { user } = useAuthStore()
   const waStatus = useWhatsAppStatus()
+  const { theme, setTheme, resolvedTheme } = useTheme()
+
+  const isDark = resolvedTheme === 'dark'
 
   return (
-    <header className="h-16 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-20">
+    <header className="h-16 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-20 transition-colors">
       <div className="flex items-center gap-4 flex-1">
         <SidebarTrigger />
         <div className="relative w-full max-w-md hidden sm:block">
@@ -88,6 +94,20 @@ export function Header() {
             <span className="hidden sm:inline">Novo Lead</span>
           </Button>
         </NewLeadDialog>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full"
+          onClick={() => setTheme(isDark ? 'light' : 'dark')}
+          title={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+        >
+          {isDark ? (
+            <Sun className="w-5 h-5 text-slate-300" />
+          ) : (
+            <Moon className="w-5 h-5 text-slate-700" />
+          )}
+        </Button>
 
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5 text-muted-foreground" />
