@@ -106,10 +106,7 @@ export default function Conversations() {
                     setActiveLeadId(lead.id)
                     if (lead.unread) markAsRead(lead.id)
                   }}
-                  className={cn(
-                    'flex items-center gap-3 p-3 border-b text-left transition-colors hover:bg-muted/50',
-                    isActive ? 'bg-primary/5 hover:bg-primary/10' : 'bg-transparent',
-                  )}
+                  className="opacity-[0.98]"
                 >
                   <div className="relative shrink-0">
                     <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
