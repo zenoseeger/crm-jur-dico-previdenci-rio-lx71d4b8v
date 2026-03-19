@@ -61,6 +61,7 @@ const App = () => (
                     />
                   </Route>
 
+                  {/* Catch-all Route for 404 */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </LeadProvider>

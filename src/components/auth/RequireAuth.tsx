@@ -15,7 +15,11 @@ export function RequireAuth({ children }: { children: JSX.Element }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    // Sanitize the return URL to prevent wildcard or incorrectly formatted path navigation errors
+    const isInvalidPath = location.pathname.includes('*')
+    const returnPath = isInvalidPath ? '/dashboard' : location.pathname
+
+    return <Navigate to="/login" state={{ from: { pathname: returnPath } }} replace />
   }
 
   return children

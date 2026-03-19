@@ -37,7 +37,18 @@ export default function Login() {
       toast.success('Acesso autorizado com sucesso!')
 
       const fromPath = location.state?.from?.pathname
-      const target = fromPath && fromPath !== '/' && fromPath !== '/login' ? fromPath : '/dashboard'
+      let target = '/dashboard'
+
+      // Sanitize target to ensure valid redirection and prevent wildcard navigation errors
+      if (
+        fromPath &&
+        typeof fromPath === 'string' &&
+        fromPath !== '/' &&
+        fromPath !== '/login' &&
+        !fromPath.includes('*')
+      ) {
+        target = fromPath
+      }
 
       navigate(target, { replace: true })
     } catch (err: any) {
