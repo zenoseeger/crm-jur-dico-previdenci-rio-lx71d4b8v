@@ -18,6 +18,7 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Administration from './pages/Administration'
 import Tasks from './pages/Tasks'
+import Conversations from './pages/Conversations'
 import NotFound from './pages/NotFound'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -47,6 +48,7 @@ const App = () => (
                     }
                   >
                     <Route index element={<Index />} />
+                    <Route path="conversas" element={<Conversations />} />
                     <Route path="tarefas" element={<Tasks />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="clientes" element={<Clients />} />

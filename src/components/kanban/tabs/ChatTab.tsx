@@ -24,15 +24,15 @@ import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
-export function ChatTab({ lead }: { lead: Lead }) {
+export function ChatTab({ lead, className }: { lead: Lead; className?: string }) {
   const { user } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [config, setConfig] = useState<DbWhatsAppConfig | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState(false)
+  const [transcribingId, setTranscribingId] = useState<string | null>(null)
 
-  // Audio recording state
   const [isRecording, setIsRecording] = useState(false)
   const [recordingDuration, setRecordingDuration] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -42,15 +42,13 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { toggleLeadAI, markAITriggered, markAsRead, updateLeadLocal } = useLeadStore()
+  const { toggleLeadAI, markAsRead, updateLeadLocal } = useLeadStore()
   const { aiConfig } = useAdminStore()
 
   useEffect(() => {
-    if (!user || !lead.id) return
+    if (!user || !lead?.id) return
 
-    if (lead.unread) {
-      markAsRead(lead.id)
-    }
+    if (lead.unread) markAsRead(lead.id)
 
     supabase
       .from('messages')
@@ -80,10 +78,7 @@ export function ChatTab({ lead }: { lead: Lead }) {
             if (prev.find((m) => m.id === p.new.id)) return prev
             return [...prev, p.new as Message]
           })
-
-          if (p.new.direction === 'inbound') {
-            markAsRead(lead.id)
-          }
+          if (p.new.direction === 'inbound') markAsRead(lead.id)
         },
       )
       .on(
@@ -98,15 +93,12 @@ export function ChatTab({ lead }: { lead: Lead }) {
     return () => {
       supabase.removeChannel(sub)
     }
-  }, [user, lead.id])
+  }, [user, lead?.id])
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
+    if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Cleanup recording on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -116,9 +108,10 @@ export function ChatTab({ lead }: { lead: Lead }) {
     }
   }, [])
 
+  if (!lead) return null
+
   const aiEnabledForLead = lead.aiEnabled !== false
   const globalAiEnabled = aiConfig.enabled
-
   const isWaitingKeyword =
     globalAiEnabled && aiEnabledForLead && aiConfig.triggerMode === 'keyword' && !lead.aiTriggered
 
@@ -137,10 +130,29 @@ export function ChatTab({ lead }: { lead: Lead }) {
         throw new Error('Falha na resposta da IA')
       }
     } catch (err) {
-      console.error('Summarize error:', err)
       toast.error('Não foi possível gerar o resumo da conversa.')
     } finally {
       setIsSummarizing(false)
+    }
+  }
+
+  const handleTranscribe = async (msgId: string) => {
+    if (!user) return
+    setTranscribingId(msgId)
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-observer', {
+        body: { leadId: lead.id, userId: user.id, action: 'transcribe_audio', messageId: msgId },
+      })
+      if (error) throw error
+      if (data?.success) {
+        toast.success('Áudio transcrito com sucesso!')
+      } else {
+        throw new Error('Falha na transcrição')
+      }
+    } catch (err) {
+      toast.error('Erro ao transcrever áudio.')
+    } finally {
+      setTranscribingId(null)
     }
   }
 
@@ -152,8 +164,6 @@ export function ChatTab({ lead }: { lead: Lead }) {
     messageType: string = 'text',
   ) => {
     if (!user) return
-
-    // Ensure absolutely clean text, removing any leading/trailing whitespace
     const cleanText = text.trim() || (messageType === 'audio' ? '[Áudio recebido]' : '')
 
     const newMsg = {
@@ -165,7 +175,6 @@ export function ChatTab({ lead }: { lead: Lead }) {
       media_url: mediaUrl,
     }
 
-    // 1. Database Consistency: Save the clean version reflecting exactly what was intended
     const { data, error } = await supabase.from('messages').insert(newMsg).select().single()
     if (error) {
       toast.error('Erro ao salvar a mensagem no banco de dados.')
@@ -173,23 +182,17 @@ export function ChatTab({ lead }: { lead: Lead }) {
     }
 
     if (data) {
-      setMessages((prev) => {
-        if (prev.find((m) => m.id === data.id)) return prev
-        return [...prev, data as Message]
-      })
-
-      // Trigger Silent AI Observer Analysis in the background
+      setMessages((prev) =>
+        prev.find((m) => m.id === data.id) ? prev : [...prev, data as Message],
+      )
       supabase.functions
         .invoke('ai-observer', { body: { leadId: lead.id, userId: user.id } })
-        .catch((err) => console.error('Error invoking ai-observer:', err))
+        .catch(() => {})
     }
 
-    // 2. Validation of Configuration & Clean Message Sending Logic
     if (direction === 'outbound' && config?.provider === 'z-api') {
       if (!config.instance_id || !config.token || !config.client_token) {
-        toast.error(
-          'Configuração do WhatsApp incompleta. Verifique Instance ID, Token e Client Token na aba de Administração.',
-        )
+        toast.error('Configuração do WhatsApp incompleta. Verifique a aba Administração.')
         return
       }
 
@@ -218,29 +221,18 @@ export function ChatTab({ lead }: { lead: Lead }) {
         })
 
         if (!res.ok) {
-          const errText = await res.text()
-          toast.error('Falha ao enviar mensagem no WhatsApp. Verifique sua conexão ou credenciais.')
-          await supabase.from('whatsapp_logs').insert({
-            user_id: user.id,
-            event_type: 'MESSAGE_SEND_ERROR',
-            message: `Erro ao enviar mensagem para ${formattedPhone}`,
-            details: {
-              status: res.status,
-              response: errText,
-              text: cleanText,
-              mediaUrl,
-              messageType,
-            },
-          })
+          toast.error('Falha ao enviar mensagem no WhatsApp.')
+          await supabase
+            .from('whatsapp_logs')
+            .insert({
+              user_id: user.id,
+              event_type: 'MESSAGE_SEND_ERROR',
+              message: `Erro ao enviar`,
+              details: { status: res.status },
+            })
         }
       } catch (err: any) {
         toast.error('Erro de rede ao comunicar com Z-API.')
-        await supabase.from('whatsapp_logs').insert({
-          user_id: user.id,
-          event_type: 'MESSAGE_SEND_ERROR',
-          message: `Erro de rede ao enviar para ${formattedPhone}`,
-          details: { error: err.message, text: cleanText, mediaUrl, messageType },
-        })
       }
     }
   }
@@ -248,49 +240,33 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('O arquivo não pode exceder 10MB.')
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      return
-    }
+    if (file.size > 10 * 1024 * 1024) return toast.error('O arquivo não pode exceder 10MB.')
 
     const isImage = file.type.startsWith('image/')
     const isAudio = file.type.startsWith('audio/')
-    if (!isImage && !isAudio) {
-      toast.error('Apenas imagens e áudios são suportados no momento.')
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      return
-    }
+    if (!isImage && !isAudio) return toast.error('Apenas imagens e áudios são suportados.')
 
     setIsUploading(true)
-
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-      const filePath = `${user?.id}/${fileName}`
+      const ext = file.name.split('.').pop()
+      const filePath = `${user?.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
 
-      const { error: uploadError } = await supabase.storage
-        .from('chat-media')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false })
+      const { error } = await supabase.storage.from('chat-media').upload(filePath, file)
+      if (error) throw error
 
-      if (uploadError) {
-        throw uploadError
-      }
+      const { data } = supabase.storage.from('chat-media').getPublicUrl(filePath)
+      const caption = isImage ? input : ''
+      if (isImage && input) setInput('')
 
-      const { data: publicUrlData } = supabase.storage.from('chat-media').getPublicUrl(filePath)
-
-      const type = isImage ? 'image' : 'audio'
-      const caption = type === 'image' ? input : ''
-
-      if (type === 'image' && input) {
-        setInput('')
-      }
-
-      await sendMessageToDbAndZapi(caption, 'outbound', false, publicUrlData.publicUrl, type)
-    } catch (err: any) {
+      await sendMessageToDbAndZapi(
+        caption,
+        'outbound',
+        false,
+        data.publicUrl,
+        isImage ? 'image' : 'audio',
+      )
+    } catch (err) {
       toast.error('Erro ao fazer upload do arquivo.')
-      console.error(err)
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -300,24 +276,20 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
+      const mr = new MediaRecorder(stream)
+      mediaRecorderRef.current = mr
       audioChunksRef.current = []
 
-      mediaRecorder.ondataavailable = (e) => {
+      mr.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data)
       }
-
-      mediaRecorder.start()
+      mr.start()
       setIsRecording(true)
       setRecordingDuration(0)
 
-      timerRef.current = setInterval(() => {
-        setRecordingDuration((prev) => prev + 1)
-      }, 1000)
+      timerRef.current = setInterval(() => setRecordingDuration((p) => p + 1), 1000)
     } catch (err) {
-      toast.error('Erro ao acessar o microfone. Verifique as permissões do navegador.')
-      console.error('Mic error:', err)
+      toast.error('Erro ao acessar o microfone.')
     }
   }
 
@@ -331,48 +303,33 @@ export function ChatTab({ lead }: { lead: Lead }) {
     }
   }
 
-  const uploadAndSendAudio = async (blob: Blob) => {
-    setIsUploading(true)
-    try {
-      const ext = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('mp4') ? 'm4a' : 'webm'
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
-      const filePath = `${user?.id}/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('chat-media')
-        .upload(filePath, blob, { cacheControl: '3600', upsert: false })
-
-      if (uploadError) throw uploadError
-
-      const { data: publicUrlData } = supabase.storage.from('chat-media').getPublicUrl(filePath)
-
-      await sendMessageToDbAndZapi(
-        '', // Empty text for audio
-        'outbound',
-        false,
-        publicUrlData.publicUrl,
-        'audio',
-      )
-    } catch (err: any) {
-      toast.error('Erro ao enviar áudio.')
-      console.error(err)
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
   const stopAndSendRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.onstop = async () => {
         mediaRecorderRef.current?.stream.getTracks().forEach((t) => t.stop())
-        if (timerRef.current) clearInterval(timerRef.current)
         setIsRecording(false)
+        if (timerRef.current) clearInterval(timerRef.current)
 
-        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm'
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
+        const blob = new Blob(audioChunksRef.current, {
+          type: mediaRecorderRef.current?.mimeType || 'audio/webm',
+        })
         audioChunksRef.current = []
 
-        await uploadAndSendAudio(audioBlob)
+        setIsUploading(true)
+        try {
+          const ext = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('mp4') ? 'm4a' : 'webm'
+          const filePath = `${user?.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
+
+          const { error } = await supabase.storage.from('chat-media').upload(filePath, blob)
+          if (error) throw error
+
+          const { data } = supabase.storage.from('chat-media').getPublicUrl(filePath)
+          await sendMessageToDbAndZapi('', 'outbound', false, data.publicUrl, 'audio')
+        } catch (err) {
+          toast.error('Erro ao enviar áudio.')
+        } finally {
+          setIsUploading(false)
+        }
       }
       mediaRecorderRef.current.stop()
     }
@@ -381,15 +338,18 @@ export function ChatTab({ lead }: { lead: Lead }) {
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isUploading) return
-
-    const userText = input
+    const text = input
     setInput('')
-
-    await sendMessageToDbAndZapi(userText, 'outbound')
+    await sendMessageToDbAndZapi(text, 'outbound')
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#E5DDD5]/20 dark:bg-muted/10 rounded-md border overflow-hidden relative">
+    <div
+      className={cn(
+        'flex flex-col h-full bg-[#E5DDD5]/20 dark:bg-muted/10 rounded-md border overflow-hidden relative',
+        className,
+      )}
+    >
       <div className="bg-background border-b p-3 flex justify-between items-center z-10 shadow-sm flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
@@ -457,7 +417,6 @@ export function ChatTab({ lead }: { lead: Lead }) {
           {messages.map((msg) => {
             const isInbound = msg.direction === 'inbound'
             const isAi = msg.content.startsWith('[IA] ')
-            // Clean text rendering in UI reflecting the raw input
             const displayText = isAi ? msg.content.replace('[IA] ', '') : msg.content
 
             return (
@@ -498,12 +457,29 @@ export function ChatTab({ lead }: { lead: Lead }) {
                     </div>
                   )}
                   {msg.message_type === 'audio' && msg.media_url && (
-                    <div className="mb-2 mt-1">
+                    <div className="mb-2 mt-1 flex flex-col gap-2">
                       <audio
                         controls
                         src={msg.media_url}
                         className="max-w-[220px] sm:max-w-[250px] h-10"
                       />
+                      {(!displayText || displayText === '[Áudio recebido]') && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="text-[10px] h-6 w-fit"
+                          disabled={transcribingId === msg.id}
+                          onClick={() => handleTranscribe(msg.id)}
+                        >
+                          {transcribingId === msg.id ? (
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3 h-3 mr-1" />
+                          )}
+                          {transcribingId === msg.id ? 'Transcrevendo...' : 'Transcrever Áudio'}
+                        </Button>
+                      )}
                     </div>
                   )}
                   {msg.message_type !== 'text' &&
@@ -520,7 +496,6 @@ export function ChatTab({ lead }: { lead: Lead }) {
                       </a>
                     )}
 
-                  {/* Changed <p> to <div> to avoid theoretical React hydration/runtime nesting errors with external HTML */}
                   {displayText.length > 0 && (
                     <div className="leading-relaxed whitespace-pre-wrap break-words">
                       {displayText}

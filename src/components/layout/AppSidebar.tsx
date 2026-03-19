@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   ListTodo,
   LogOut,
+  MessageSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -28,6 +29,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 
 const navItems = [
   { title: 'Pipeline', path: '/', icon: KanbanSquare },
+  { title: 'Conversas', path: '/conversas', icon: MessageSquare },
   { title: 'Tarefas', path: '/tarefas', icon: ListTodo },
   { title: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { title: 'Clientes', path: '/clientes', icon: Users },
