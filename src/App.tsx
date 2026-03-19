@@ -33,36 +33,37 @@ const App = () => (
                 <Toaster />
                 <Sonner position="top-center" expand={true} richColors />
                 <Routes>
-                  {/* Public Routes */}
+                  {/* Public Routes - Defined explicitly before any layout wrappers */}
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
 
-                  {/* Protected Routes */}
+                  {/* Protected Routes enclosed in Layout */}
                   <Route
+                    path="/"
                     element={
                       <RequireAuth>
                         <Layout />
                       </RequireAuth>
                     }
                   >
-                    <Route path="/" element={<Index />} />
-                    <Route path="/tarefas" element={<Tasks />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/clientes" element={<Clients />} />
-                    <Route path="/relatorios" element={<Reports />} />
-                    <Route path="/configuracoes" element={<Settings />} />
+                    <Route index element={<Index />} />
+                    <Route path="tarefas" element={<Tasks />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="clientes" element={<Clients />} />
+                    <Route path="relatorios" element={<Reports />} />
+                    <Route path="configuracoes" element={<Settings />} />
                     <Route
-                      path="/administracao"
+                      path="administracao"
                       element={
                         <RequireAdmin>
                           <Administration />
                         </RequireAdmin>
                       }
                     />
-                  </Route>
 
-                  {/* Catch-all Route for 404 */}
-                  <Route path="*" element={<NotFound />} />
+                    {/* Catch-all Route for 404 - Placed securely inside protected routes */}
+                    <Route path="*" element={<NotFound />} />
+                  </Route>
                 </Routes>
               </LeadProvider>
             </ClientProvider>

@@ -16,7 +16,7 @@ export function RequireAuth({ children }: { children: JSX.Element }) {
 
   if (!isAuthenticated) {
     // Sanitize the return URL to prevent wildcard or incorrectly formatted path navigation errors
-    const isInvalidPath = location.pathname.includes('*')
+    const isInvalidPath = location.pathname.includes('*') || location.pathname === '/*'
     const returnPath = isInvalidPath ? '/dashboard' : location.pathname
 
     return <Navigate to="/login" state={{ from: { pathname: returnPath } }} replace />
