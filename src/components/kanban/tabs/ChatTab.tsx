@@ -9,6 +9,9 @@ import {
   Mic,
   Trash2,
   Sparkles,
+  X,
+  FileText,
+  RefreshCw,
 } from 'lucide-react'
 import { Lead, Message, DbWhatsAppConfig } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -31,6 +34,7 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
   const [config, setConfig] = useState<DbWhatsAppConfig | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)
   const [transcribingId, setTranscribingId] = useState<string | null>(null)
 
   const [isRecording, setIsRecording] = useState(false)
@@ -125,6 +129,7 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
       if (error) throw error
       if (data?.success) {
         updateLeadLocal(lead.id, { aiSummary: data.summary, aiScore: data.score })
+        setShowSummary(true)
         toast.success('Resumo gerado com sucesso!')
       } else {
         throw new Error('Falha na resposta da IA')
@@ -528,23 +533,81 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
         </div>
       </ScrollArea>
 
-      <div className="p-3 bg-background border-t space-y-2 shrink-0">
+      <div className="relative p-3 bg-background border-t space-y-2 shrink-0">
+        {showSummary && lead.aiSummary && (
+          <div className="absolute bottom-full left-0 w-full p-3 z-20 pb-0 mb-2">
+            <div className="rounded-xl shadow-lg border border-primary/20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 animate-in slide-in-from-bottom-2 fade-in duration-200 overflow-hidden relative">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 h-6 w-6 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowSummary(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+              <div className="p-3 pb-2 border-b border-border/50 flex items-center gap-2 bg-muted/30">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <h4 className="font-semibold text-sm">Resumo da Conversa</h4>
+                <Badge variant="secondary" className="ml-auto mr-6 font-mono text-[10px]">
+                  Score: {lead.aiScore}/100
+                </Badge>
+              </div>
+              <div className="p-3">
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto no-scrollbar">
+                  {lead.aiSummary}
+                </p>
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSummarize}
+                    disabled={isSummarizing}
+                    className="h-7 text-xs bg-background"
+                  >
+                    {isSummarizing ? (
+                      <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-3 h-3 mr-1.5" />
+                    )}
+                    {isSummarizing ? 'Regerando...' : 'Regerar'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between px-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleSummarize}
-            disabled={isSummarizing || messages.length === 0}
-            className="text-xs h-7 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary transition-all"
-          >
-            {isSummarizing ? (
-              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-            )}
-            {isSummarizing ? 'Gerando resumo...' : 'Resumir Conversa'}
-          </Button>
+          {lead.aiSummary ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSummary(!showSummary)}
+              className="text-xs h-7 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary transition-all"
+            >
+              <FileText className="w-3.5 h-3.5 mr-1.5" />
+              {showSummary ? 'Ocultar Resumo' : 'Ver Resumo'}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSummarize}
+              disabled={isSummarizing || messages.length === 0}
+              className="text-xs h-7 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary transition-all"
+            >
+              {isSummarizing ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              {isSummarizing ? 'Gerando resumo...' : 'Resumir Conversa'}
+            </Button>
+          )}
         </div>
         <form onSubmit={sendMessage} className="flex gap-2 items-center w-full">
           {!isRecording && (
