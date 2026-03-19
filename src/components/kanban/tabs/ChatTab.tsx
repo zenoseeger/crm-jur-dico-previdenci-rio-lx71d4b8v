@@ -344,11 +344,12 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
   return (
     <div
       className={cn(
-        'flex flex-col h-full bg-[#E5DDD5]/20 dark:bg-muted/10 rounded-md border overflow-hidden relative',
+        'flex flex-col h-full bg-[#E5DDD5]/20 dark:bg-muted/10 overflow-hidden relative',
+        !className?.includes('border-none') && 'rounded-md border',
         className,
       )}
     >
-      <div className="bg-background border-b p-3 flex justify-between items-center z-10 shadow-sm flex-wrap gap-2">
+      <div className="bg-background border-b p-3 flex justify-between items-center z-10 shadow-sm flex-wrap gap-2 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
             {lead.name.charAt(0)}
@@ -410,8 +411,8 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
-        <div className="flex flex-col gap-3 pb-4">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="flex flex-col gap-3 p-4 pb-4">
           {messages.map((msg) => {
             const isInbound = msg.direction === 'inbound'
             const isAi = msg.content.startsWith('[IA] ')
@@ -527,7 +528,7 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
         </div>
       </ScrollArea>
 
-      <div className="p-3 bg-background border-t space-y-2">
+      <div className="p-3 bg-background border-t space-y-2 shrink-0">
         <div className="flex items-center justify-between px-1">
           <Button
             type="button"

@@ -77,8 +77,8 @@ export default function Conversations() {
   return (
     <div className="flex h-[calc(100vh-4rem)] w-full overflow-hidden bg-background">
       {/* Left Sidebar */}
-      <div className="w-full sm:w-[350px] border-r flex flex-col shrink-0 bg-muted/10">
-        <div className="p-4 border-b bg-background">
+      <div className="w-full sm:w-[350px] border-r flex flex-col shrink-0 min-h-0 bg-muted/10">
+        <div className="p-4 border-b bg-background shrink-0">
           <h2 className="text-lg font-bold tracking-tight mb-4 flex items-center gap-2">
             <MessageSquare className="w-5 h-5" /> Conversas
           </h2>
@@ -93,7 +93,7 @@ export default function Conversations() {
           </div>
         </div>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="flex flex-col">
             {sortedLeads.map((lead) => {
               const lastMsg = lastMessages[lead.id]
@@ -106,31 +106,35 @@ export default function Conversations() {
                     setActiveLeadId(lead.id)
                     if (lead.unread) markAsRead(lead.id)
                   }}
-                  className="opacity-[0.98]"
+                  className="opacity-[0.98] text-left hover:bg-muted/50 transition-colors p-3 border-b"
                 >
-                  <div className="relative shrink-0">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
-                      {lead.name.charAt(0).toUpperCase()}
+                  <div className="flex items-start gap-3">
+                    <div className="relative shrink-0 mt-0.5">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
+                        {lead.name.charAt(0).toUpperCase()}
+                      </div>
+                      {lead.unread && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full border-2 border-background" />
+                      )}
                     </div>
-                    {lead.unread && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full border-2 border-background" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-0.5">
-                      <span className="font-medium text-sm truncate pr-2">{lead.name}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {lastMsg ? formatTime(lastMsg.date) : formatTime(lead.createdAt)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate h-4">
-                      {lastMsg
-                        ? lastMsg.content.includes('[Áudio recebido]')
-                          ? '🎵 Áudio'
-                          : lastMsg.content.includes('[Imagem recebida]')
-                            ? '📷 Imagem'
-                            : lastMsg.content.replace('[IA] ', '')
-                        : 'Nenhuma mensagem ainda'}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline mb-0.5">
+                        <span className="font-medium text-sm truncate pr-2 text-foreground">
+                          {lead.name}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {lastMsg ? formatTime(lastMsg.date) : formatTime(lead.createdAt)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate h-4">
+                        {lastMsg
+                          ? lastMsg.content.includes('[Áudio recebido]')
+                            ? '🎵 Áudio'
+                            : lastMsg.content.includes('[Imagem recebida]')
+                              ? '📷 Imagem'
+                              : lastMsg.content.replace('[IA] ', '')
+                          : 'Nenhuma mensagem ainda'}
+                      </div>
                     </div>
                   </div>
                 </button>
@@ -147,9 +151,12 @@ export default function Conversations() {
       </div>
 
       {/* Right Chat Area */}
-      <div className="flex-1 hidden sm:flex flex-col min-w-0 bg-slate-50 dark:bg-muted/5">
+      <div className="flex-1 hidden sm:flex flex-col min-w-0 min-h-0 bg-slate-50 dark:bg-muted/5">
         {activeLead ? (
-          <ChatTab lead={activeLead} className="rounded-none border-none shadow-none" />
+          <ChatTab
+            lead={activeLead}
+            className="flex-1 min-h-0 rounded-none border-none shadow-none"
+          />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
             <div className="bg-primary/5 p-4 rounded-full mb-4">
@@ -161,7 +168,7 @@ export default function Conversations() {
         )}
       </div>
 
-      {/* Mobile Right Area Overlay (optional if we want responsive, but hidden by default based on sm:hidden) */}
+      {/* Mobile Right Area Overlay */}
       {activeLead && (
         <div className="fixed inset-0 z-50 bg-background sm:hidden flex flex-col animate-in slide-in-from-right-full">
           <div className="h-14 border-b flex items-center px-2 shrink-0">
@@ -172,7 +179,10 @@ export default function Conversations() {
               ← Voltar
             </button>
           </div>
-          <ChatTab lead={activeLead} className="flex-1 rounded-none border-none shadow-none" />
+          <ChatTab
+            lead={activeLead}
+            className="flex-1 min-h-0 rounded-none border-none shadow-none"
+          />
         </div>
       )}
     </div>
