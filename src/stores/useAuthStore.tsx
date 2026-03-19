@@ -140,7 +140,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       password: pass,
       options: { data: { name } },
     })
-    if (error) throw new Error(error.message)
+
+    if (error) {
+      if ((error as any).code === 'over_email_send_rate_limit' || error.status === 429) {
+        throw new Error(
+          'Rate limit exceeded for sending emails. Please wait a few minutes before trying again.',
+        )
+      }
+      throw new Error(error.message)
+    }
 
     if (data?.session?.user) {
       setUser({
