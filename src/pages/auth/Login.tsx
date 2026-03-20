@@ -26,14 +26,18 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email || !email.includes('@') || !password) {
+
+    // Normalize email to prevent trailing spaces and capitalization issues
+    const cleanEmail = email.trim().toLowerCase()
+
+    if (!cleanEmail || !cleanEmail.includes('@') || !password) {
       toast.error('Por favor, preencha todos os campos corretamente.')
       return
     }
 
     setLoading(true)
     try {
-      await login(email, password)
+      await login(cleanEmail, password)
       toast.success('Acesso autorizado com sucesso!')
 
       const fromPath = location.state?.from?.pathname
@@ -52,7 +56,7 @@ export default function Login() {
 
       navigate(target, { replace: true })
     } catch (err: any) {
-      toast.error(err.message)
+      toast.error(err.message || 'Email ou senha inválidos.')
     } finally {
       setLoading(false)
     }

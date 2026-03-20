@@ -105,7 +105,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, pass: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass })
-    if (error) throw new Error('Email ou senha inválidos.')
+    if (error) {
+      // Provide a clearer translation for Invalid login credentials
+      if (error.message.includes('Invalid login') || error.status === 400) {
+        throw new Error('Email ou senha inválidos.')
+      }
+      throw new Error(error.message)
+    }
   }
 
   const register = async (name: string, email: string, pass: string) => {

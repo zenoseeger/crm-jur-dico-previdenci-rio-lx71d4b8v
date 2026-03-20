@@ -65,7 +65,9 @@ export function UserManagement() {
   }
 
   const handleSubmit = async () => {
-    if (!formData.name.trim() || !formData.email.trim()) {
+    const cleanEmail = formData.email.trim().toLowerCase()
+
+    if (!formData.name.trim() || !cleanEmail) {
       toast.error('Preencha os campos obrigatórios.')
       return
     }
@@ -80,22 +82,27 @@ export function UserManagement() {
       return
     }
 
+    if (formData.password && formData.password.length < 6) {
+      toast.error('A senha deve ter no mínimo 6 caracteres.')
+      return
+    }
+
     setLoading(true)
     try {
       if (editingUser) {
         const payload: any = {
-          name: formData.name,
-          email: formData.email,
+          name: formData.name.trim(),
+          email: cleanEmail,
           role: formData.role,
         }
-        if (formData.password.trim()) {
-          payload.password = formData.password.trim()
+        if (formData.password) {
+          payload.password = formData.password
         }
         await adminUpdateUser(editingUser.id, payload)
       } else {
         await adminCreateUser({
-          name: formData.name,
-          email: formData.email,
+          name: formData.name.trim(),
+          email: cleanEmail,
           role: formData.role,
           password: formData.password,
         })
