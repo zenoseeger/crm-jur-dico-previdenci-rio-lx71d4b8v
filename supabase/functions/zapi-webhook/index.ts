@@ -1,123 +1,152 @@
-import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders });
+    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders })
   }
 
   try {
-    const payload = await req.json();
-    console.log('Webhook payload received', JSON.stringify(payload));
+    const payload = await req.json()
+    console.log('Webhook payload received', JSON.stringify(payload))
 
     if (payload.isGroup) {
-        return new Response('ok - ignored group', { status: 200, headers: corsHeaders });
+      return new Response('ok - ignored group', { status: 200, headers: corsHeaders })
     }
 
     // Ignore status updates
-    const isStatusUpdate = payload.status !== undefined || payload.event === 'onMessageStatus' || payload.deliveryStatus || payload.waitingMessage;
-    if (isStatusUpdate && !payload.text && !payload.image && !payload.audio && !payload.document && !payload.video && !payload.sticker) {
-        return new Response('ok - ignored status update', { status: 200, headers: corsHeaders });
+    const isStatusUpdate =
+      payload.status !== undefined ||
+      payload.event === 'onMessageStatus' ||
+      payload.deliveryStatus ||
+      payload.waitingMessage
+    if (
+      isStatusUpdate &&
+      !payload.text &&
+      !payload.image &&
+      !payload.audio &&
+      !payload.document &&
+      !payload.video &&
+      !payload.sticker
+    ) {
+      return new Response('ok - ignored status update', { status: 200, headers: corsHeaders })
     }
 
-    const instanceId = payload.instanceId;
-    const phone = payload.phone;
-    
+    const instanceId = payload.instanceId
+    const phone = payload.phone
+
     if (!instanceId || !phone) {
-      return new Response('Missing required fields (instanceId, phone)', { status: 400, headers: corsHeaders });
+      return new Response('Missing required fields (instanceId, phone)', {
+        status: 400,
+        headers: corsHeaders,
+      })
     }
 
-    const isFromMe = payload.fromMe === true;
+    const isFromMe = payload.fromMe === true
 
     // Advanced extraction mapping
-    let content = '';
-    let messageType = 'text';
+    let content = ''
+    let messageType = 'text'
 
     if (payload.text) {
-      content = payload.text.message?.trim() || '';
+      content = payload.text.message?.trim() || ''
     } else if (payload.audio) {
-      content = '[Áudio recebido]';
-      messageType = 'audio';
+      content = '[Áudio recebido]'
+      messageType = 'audio'
     } else if (payload.video) {
-      content = payload.video.caption?.trim() || '';
-      if (!content) content = '[Vídeo recebido]';
-      messageType = 'video';
+      content = payload.video.caption?.trim() || ''
+      if (!content) content = '[Vídeo recebido]'
+      messageType = 'video'
     } else if (payload.image) {
-      content = payload.image.caption?.trim() || '';
-      if (!content) content = '[Imagem recebida]';
-      messageType = 'image';
+      content = payload.image.caption?.trim() || ''
+      if (!content) content = '[Imagem recebida]'
+      messageType = 'image'
     } else if (payload.document) {
-      content = payload.document.caption?.trim() || payload.document.fileName?.trim() || '';
-      if (!content) content = '[Documento recebido]';
-      messageType = 'document';
+      content = payload.document.caption?.trim() || payload.document.fileName?.trim() || ''
+      if (!content) content = '[Documento recebido]'
+      messageType = 'document'
     } else if (payload.sticker) {
-      content = '[Figurinha recebida]';
-      messageType = 'sticker';
+      content = '[Figurinha recebida]'
+      messageType = 'sticker'
     } else if (payload.location) {
-      content = '[Localização recebida]';
-      messageType = 'location';
+      content = '[Localização recebida]'
+      messageType = 'location'
     } else if (payload.contacts) {
-      content = '[Contato recebido]';
-      messageType = 'contact';
+      content = '[Contato recebido]'
+      messageType = 'contact'
     } else if (payload.buttonResponseMessage) {
-      content = payload.buttonResponseMessage.buttonText || '[Botão clicado]';
+      content = payload.buttonResponseMessage.buttonText || '[Botão clicado]'
     } else if (payload.listResponseMessage) {
-      content = payload.listResponseMessage.title || '[Opção selecionada]';
+      content = payload.listResponseMessage.title || '[Opção selecionada]'
     } else if (payload.extendedTextMessage) {
-      content = payload.extendedTextMessage.text || '[Mensagem estendida]';
+      content = payload.extendedTextMessage.text || '[Mensagem estendida]'
     }
 
     if (!content) {
-      content = '[Mensagem/Mídia]';
+      content = '[Mensagem/Mídia]'
     }
 
-    const mediaUrl = payload.image?.imageUrl || payload.document?.documentUrl || payload.audio?.audioUrl || payload.video?.videoUrl || null;
-    
+    const mediaUrl =
+      payload.image?.imageUrl ||
+      payload.document?.documentUrl ||
+      payload.audio?.audioUrl ||
+      payload.video?.videoUrl ||
+      null
+
     const { data: config } = await supabase
       .from('whatsapp_configs')
       .select('id, user_id, status')
       .eq('instance_id', instanceId)
-      .single();
+      .single()
 
     if (!config) {
-      return new Response('Instance not found or not linked to any user', { status: 404, headers: corsHeaders });
+      return new Response('Instance not found or not linked to any user', {
+        status: 404,
+        headers: corsHeaders,
+      })
     }
 
     if (config.status !== 'connected') {
-      await supabase.from('whatsapp_configs').update({ status: 'connected', last_error: null }).eq('id', config.id);
+      await supabase
+        .from('whatsapp_configs')
+        .update({ status: 'connected', last_error: null })
+        .eq('id', config.id)
     }
 
     const { data: leads } = await supabase
       .from('leads')
       .select('id, phone')
-      .eq('user_id', config.user_id);
+      .eq('user_id', config.user_id)
 
-    let leadId = null;
+    let leadId = null
     if (leads) {
-      const normalizedIncomingPhone = String(phone).replace(/\D/g, '');
-      const match = leads.find(l => {
-        const normalizedLeadPhone = String(l.phone || '').replace(/\D/g, '');
-        if (!normalizedLeadPhone) return false;
-        return normalizedIncomingPhone.endsWith(normalizedLeadPhone) || normalizedLeadPhone.endsWith(normalizedIncomingPhone);
-      });
-      if (match) leadId = match.id;
+      const normalizedIncomingPhone = String(phone).replace(/\D/g, '')
+      const match = leads.find((l) => {
+        const normalizedLeadPhone = String(l.phone || '').replace(/\D/g, '')
+        if (!normalizedLeadPhone) return false
+        return (
+          normalizedIncomingPhone.endsWith(normalizedLeadPhone) ||
+          normalizedLeadPhone.endsWith(normalizedIncomingPhone)
+        )
+      })
+      if (match) leadId = match.id
     }
 
     if (!leadId && !isFromMe) {
-      const pushName = payload.senderName || payload.pushName || payload.contactName || phone;
+      const pushName = payload.senderName || payload.pushName || payload.contactName || phone
       const { data: newLead, error: createLeadError } = await supabase
         .from('leads')
         .insert({
@@ -125,27 +154,27 @@ Deno.serve(async (req: Request) => {
           name: pushName,
           phone: phone,
           stage: 'NOVO LEAD',
-          unread: true
+          unread: true,
         })
         .select('id')
-        .single();
-        
+        .single()
+
       if (createLeadError) {
-        console.error('Error creating lead:', createLeadError);
+        console.error('Error creating lead:', createLeadError)
       } else if (newLead) {
-        leadId = newLead.id;
-        
+        leadId = newLead.id
+
         await supabase.from('whatsapp_logs').insert({
           user_id: config.user_id,
           event_type: 'LEAD_CREATED',
           message: `Novo lead criado via WhatsApp: ${pushName} (${phone})`,
-          details: { leadId: newLead.id, phone }
-        });
+          details: { leadId: newLead.id, phone },
+        })
       }
     }
 
     if (leadId) {
-      const direction = isFromMe ? 'outbound' : 'inbound';
+      const direction = isFromMe ? 'outbound' : 'inbound'
 
       // Anti-duplicate loop check for fromMe messages
       if (isFromMe) {
@@ -155,16 +184,22 @@ Deno.serve(async (req: Request) => {
           .eq('lead_id', leadId)
           .eq('direction', 'outbound')
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(10)
 
-        const isDuplicate = recentMsgs?.some(m => {
-          const c1 = m.content.trim().toLowerCase().replace(/^\[ia\]\s*/, '');
-          const c2 = content.trim().toLowerCase();
-          return c1 === c2;
-        });
-        
+        const isDuplicate = recentMsgs?.some((m) => {
+          const c1 = m.content
+            .trim()
+            .toLowerCase()
+            .replace(/^\[ia\]\s*/, '')
+          const c2 = content.trim().toLowerCase()
+          return c1 === c2
+        })
+
         if (isDuplicate) {
-           return new Response('ok - ignored duplicate fromMe', { status: 200, headers: corsHeaders });
+          return new Response('ok - ignored duplicate fromMe', {
+            status: 200,
+            headers: corsHeaders,
+          })
         }
       }
 
@@ -175,15 +210,15 @@ Deno.serve(async (req: Request) => {
         direction,
         media_url: mediaUrl,
         message_type: messageType,
-      });
+      })
 
       if (insertError) {
-        console.error('Insert error:', insertError);
-        return new Response('Database Error', { status: 500, headers: corsHeaders });
+        console.error('Insert error:', insertError)
+        return new Response('Database Error', { status: 500, headers: corsHeaders })
       }
 
       if (direction === 'inbound') {
-        await supabase.from('leads').update({ unread: true }).eq('id', leadId);
+        await supabase.from('leads').update({ unread: true }).eq('id', leadId)
 
         // Invoke ai-observer asynchronously only for inbound messages
         try {
@@ -191,22 +226,22 @@ Deno.serve(async (req: Request) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}`
+              Authorization: `Bearer ${supabaseServiceKey}`,
             },
-            body: JSON.stringify({ leadId, userId: config.user_id })
-          }).catch(err => console.error('Failed to trigger ai-observer', err));
+            body: JSON.stringify({ leadId, userId: config.user_id }),
+          }).catch((err) => console.error('Failed to trigger ai-observer', err))
         } catch (e) {
-          console.error('Error invoking ai-observer:', e);
+          console.error('Error invoking ai-observer:', e)
         }
       }
     }
 
-    return new Response(JSON.stringify({ success: true }), { 
-      status: 200, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    });
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   } catch (err) {
-    console.error('Webhook error:', err);
-    return new Response('Internal Server Error', { status: 500, headers: corsHeaders });
+    console.error('Webhook error:', err)
+    return new Response('Internal Server Error', { status: 500, headers: corsHeaders })
   }
-});
+})

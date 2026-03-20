@@ -33,6 +33,7 @@ export function DocsTab({ lead }: { lead: Lead }) {
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -77,6 +78,58 @@ export function DocsTab({ lead }: { lead: Lead }) {
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleDownload = async (doc: DocumentFile) => {
+    if (doc.url.startsWith('blob:')) {
+      toast.error(
+        'Este arquivo foi salvo localmente em uma versão anterior e não está mais disponível no servidor.',
+      )
+      return
+    }
+
+    setDownloadingId(doc.id)
+    try {
+      let blobUrl = doc.url
+
+      if (doc.url.includes('/storage/v1/object/public/documents/')) {
+        const filePath = doc.url.split('/documents/')[1]
+        if (filePath) {
+          const { data, error } = await supabase.storage.from('documents').download(filePath)
+          if (error) throw error
+          blobUrl = window.URL.createObjectURL(data)
+        }
+      } else {
+        const res = await fetch(doc.url)
+        const blob = await res.blob()
+        blobUrl = window.URL.createObjectURL(blob)
+      }
+
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = doc.name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+
+      if (blobUrl !== doc.url) {
+        window.URL.revokeObjectURL(blobUrl)
+      }
+    } catch (err) {
+      console.error('Download error:', err)
+      toast.error('Erro ao baixar o arquivo. Verifique sua conexão com a internet.')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
+  const handleView = (e: React.MouseEvent, doc: DocumentFile) => {
+    if (doc.url.startsWith('blob:')) {
+      e.preventDefault()
+      toast.error(
+        'Este arquivo foi salvo localmente em uma versão anterior e não está mais disponível no servidor.',
+      )
     }
   }
 
@@ -165,7 +218,12 @@ export function DocsTab({ lead }: { lead: Lead }) {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Ver">
-                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => handleView(e, doc)}
+                        >
                           <Eye className="w-4 h-4" />
                         </a>
                       </Button>
@@ -173,12 +231,15 @@ export function DocsTab({ lead }: { lead: Lead }) {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        asChild
+                        onClick={() => handleDownload(doc)}
                         title="Baixar"
+                        disabled={downloadingId === doc.id}
                       >
-                        <a href={doc.url} download={doc.name}>
+                        {downloadingId === doc.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
                           <Download className="w-4 h-4" />
-                        </a>
+                        )}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
