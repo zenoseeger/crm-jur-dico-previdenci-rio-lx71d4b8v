@@ -1,105 +1,141 @@
-import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-};
+}
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
   },
-});
+})
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing auth header' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Missing auth header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const token = authHeader.replace('Bearer ', '')
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAdmin.auth.getUser(token)
 
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
-    const isAdmin = user.email === 'zhseeger@gmail.com' || user.user_metadata?.role === 'Admin';
+    const isAdmin = user.email === 'zhseeger@gmail.com' || user.user_metadata?.role === 'Admin'
     if (!isAdmin) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Admin only' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Unauthorized: Admin only' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     if (req.method === 'POST') {
-      const { email, password, name, role } = await req.json();
-      const cleanEmail = String(email).trim().toLowerCase();
-      const cleanName = String(name).trim();
-      
+      const { email, password, name, role } = await req.json()
+      const cleanEmail = String(email).trim().toLowerCase()
+      const cleanName = String(name).trim()
+
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email: cleanEmail,
-        password,
+        password: password,
         email_confirm: true,
-        user_metadata: { name: cleanName, role: role || 'SDR' }
-      });
-      if (error) throw error;
-      return new Response(JSON.stringify({ user: data.user }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        user_metadata: { name: cleanName, role: role || 'SDR' },
+      })
+      if (error) throw error
+
+      // Manually sync profiles table to ensure immediate availability
+      if (data.user) {
+        await supabaseAdmin.from('profiles').upsert({
+          id: data.user.id,
+          email: cleanEmail,
+          name: cleanName,
+          role: role || 'SDR',
+        })
+      }
+
+      return new Response(JSON.stringify({ user: data.user }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     if (req.method === 'PUT') {
-      const { id, email, password, name, role } = await req.json();
-      const cleanEmail = String(email).trim().toLowerCase();
-      const cleanName = String(name).trim();
-      
-      const updateData: any = {
+      const { id, email, password, name, role } = await req.json()
+      const cleanEmail = String(email).trim().toLowerCase()
+      const cleanName = String(name).trim()
+
+      // Step 1: Update metadata and email
+      const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, {
         email: cleanEmail,
-        email_confirm: true, // Forces immediate login capability if email changed
-        user_metadata: { name: cleanName, role }
-      };
-      
+        email_confirm: true,
+        user_metadata: { name: cleanName, role },
+      })
+      if (error) throw error
+
+      // Step 2: Update password in a completely separate call.
+      // This is crucial because GoTrue can drop password updates if combined with email changes or metadata.
       if (password) {
-        updateData.password = password;
-      }
-      
-      const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, updateData);
-      if (error) throw error;
-      
-      // Manually sync profiles table because the ON INSERT trigger won't catch updates
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update({ 
-          email: cleanEmail, 
-          name: cleanName, 
-          role: role 
+        const { error: pwdError } = await supabaseAdmin.auth.admin.updateUserById(id, {
+          password: password,
         })
-        .eq('id', id);
-        
-      if (profileError) {
-        console.error('Error syncing profile update:', profileError);
+        if (pwdError) throw pwdError
       }
 
-      return new Response(JSON.stringify({ user: data.user }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      // Step 3: Manually sync profiles table
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({
+          email: cleanEmail,
+          name: cleanName,
+          role: role,
+        })
+        .eq('id', id)
+
+      if (profileError) {
+        console.error('Error syncing profile update:', profileError)
+      }
+
+      return new Response(JSON.stringify({ user: data.user }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     if (req.method === 'DELETE') {
-      const { id } = await req.json();
-      if (!id) throw new Error('Missing user id');
-      const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
-      if (error) throw error;
-      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { id } = await req.json()
+      if (!id) throw new Error('Missing user id')
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(id)
+      if (error) throw error
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
-    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders });
+    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders })
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
-});
+})
