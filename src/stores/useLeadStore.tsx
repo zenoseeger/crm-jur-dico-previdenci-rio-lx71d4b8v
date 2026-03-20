@@ -41,6 +41,7 @@ interface LeadStore {
   toggleTask: (leadId: string, taskId: string) => void
   addTask: (leadId: string, task: Task) => void
   addTagToLead: (leadId: string, tag: string) => void
+  removeTagFromLead: (leadId: string, tag: string) => void
   toggleLeadAI: (leadId: string, enabled: boolean) => void
   markAITriggered: (leadId: string) => void
   addDocument: (leadId: string, doc: DocumentFile) => void
@@ -392,6 +393,14 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     updateDb(leadId, nl)
   }
 
+  const removeTagFromLead = (leadId: string, tag: string) => {
+    const l = leads.find((x) => x.id === leadId)
+    if (!l || !l.tags.includes(tag)) return
+    const nl = { ...l, tags: l.tags.filter((t) => t !== tag) }
+    setLeads((prev) => prev.map((x) => (x.id === leadId ? nl : x)))
+    updateDb(leadId, nl)
+  }
+
   const addTask = (leadId: string, task: Task) => {
     const l = leads.find((x) => x.id === leadId)
     if (!l) return
@@ -542,6 +551,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     toggleTask,
     addTask,
     addTagToLead,
+    removeTagFromLead,
     toggleLeadAI,
     markAITriggered,
     addDocument,

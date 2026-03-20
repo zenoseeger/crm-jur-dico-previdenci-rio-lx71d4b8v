@@ -15,12 +15,12 @@ import {
 import { useAdminStore } from '@/stores/useAdminStore'
 import useLeadStore from '@/stores/useLeadStore'
 import { Button } from '@/components/ui/button'
-import { Loader2, AlignLeft, Bot } from 'lucide-react'
+import { Loader2, AlignLeft, Bot, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function SummaryTab({ lead }: { lead: Lead }) {
   const { tags: adminTags } = useAdminStore()
-  const { addTagToLead, updateLeadNotes } = useLeadStore()
+  const { addTagToLead, removeTagFromLead, updateLeadNotes } = useLeadStore()
   const [open, setOpen] = useState(false)
   const [notes, setNotes] = useState(lead.notes || '')
   const [isSaving, setIsSaving] = useState(false)
@@ -114,14 +114,22 @@ export function SummaryTab({ lead }: { lead: Lead }) {
               <Badge
                 key={tag}
                 variant="secondary"
-                className="px-3 py-1"
+                className="pl-3 pr-1.5 py-1 flex items-center gap-1 group"
                 style={{
                   backgroundColor: tagDef ? `${tagDef.color}20` : undefined,
                   color: tagDef ? tagDef.color : undefined,
                   border: tagDef ? `1px solid ${tagDef.color}40` : undefined,
                 }}
               >
-                {tag}
+                <span>{tag}</span>
+                <button
+                  type="button"
+                  onClick={() => removeTagFromLead(lead.id, tag)}
+                  className="rounded-full p-0.5 opacity-60 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-all focus:outline-none"
+                  title="Remover tag"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </Badge>
             )
           })}

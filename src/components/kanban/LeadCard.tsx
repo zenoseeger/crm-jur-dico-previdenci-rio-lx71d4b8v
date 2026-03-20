@@ -191,7 +191,7 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
           >
             {getLocalizedHeat(lead.heat)}
           </Badge>
-          {lead.tags.slice(0, 2).map((tag) => {
+          {lead.tags.slice(0, 6).map((tag) => {
             const tagDef = adminTags.find((t) => t.name === tag)
             return (
               <Badge
@@ -212,9 +212,9 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
               </Badge>
             )
           })}
-          {lead.tags.length > 2 && (
+          {lead.tags.length > 6 && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-background/50">
-              +{lead.tags.length - 2}
+              +{lead.tags.length - 6}
             </Badge>
           )}
         </div>
