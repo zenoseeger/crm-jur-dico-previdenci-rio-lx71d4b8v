@@ -50,7 +50,7 @@ export function AppSidebar() {
           <div className="bg-slate-900 text-amber-500 p-1.5 rounded-md flex-shrink-0">
             <Scale className="w-5 h-5" />
           </div>
-          <span className="font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate group-data-[collapsible=icon]:hidden shadow-[0px_0px_6px_0px_#ffffff]">
+          <span className="font-bold tracking-tight dark:text-slate-100 truncate group-data-[collapsible=icon]:hidden text-[#e1e1e1] block shadow-[0px_0px_6px_0px_#101c3f]">
             PreviCRM
           </span>
         </div>
