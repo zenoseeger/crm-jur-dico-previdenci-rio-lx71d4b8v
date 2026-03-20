@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import useLeadStore from '@/stores/useLeadStore'
 import { useAdminStore } from '@/stores/useAdminStore'
+import { useAuth } from '@/hooks/use-auth'
 import { KanbanColumn } from './KanbanColumn'
 import { LeadDrawer } from './LeadDrawer'
 import { LostLeadDialog } from './LostLeadDialog'
@@ -19,12 +20,11 @@ import { FolderKanban } from 'lucide-react'
 export function KanbanBoard() {
   const { leads, currentPipelineId, setCurrentPipelineId, setSelectedLead, moveLead } =
     useLeadStore()
-  const { pipelines, pipelineStages, currentUser } = useAdminStore()
+  const { pipelines, pipelineStages } = useAdminStore()
+  const { user } = useAuth()
   const isMobile = useIsMobile()
 
-  const allowedPipelines = pipelines.filter((p) =>
-    currentUser ? p.userIds.includes(currentUser.id) : true,
-  )
+  const allowedPipelines = pipelines.filter((p) => (user ? p.userIds.includes(user.id) : true))
 
   useEffect(() => {
     if (

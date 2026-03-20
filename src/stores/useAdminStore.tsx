@@ -47,9 +47,7 @@ interface AdminStore {
 
 const AdminContext = createContext<AdminStore | undefined>(undefined)
 
-const initialPipelines: Pipeline[] = [
-  { id: 'p1', name: 'Aposentadoria (Padrão)', userIds: ['u_admin', 'u2', 'u3'] },
-]
+const initialPipelines: Pipeline[] = [{ id: 'p1', name: 'Aposentadoria (Padrão)', userIds: [] }]
 
 const initialTags: TagDef[] = [
   { id: 't1', name: 'Aposentadoria Rural', color: '#22c55e', category: 'Tipo de Benefício' },
@@ -170,6 +168,40 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
             }))
           }
         })
+
+      supabase
+        .from('pipelines')
+        .select('*')
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setPipelines(
+              data.map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                userIds: d.user_ids || [],
+              })),
+            )
+          }
+        })
+
+      supabase
+        .from('pipeline_stages')
+        .select('*')
+        .order('order', { ascending: true })
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setPipelineStages(
+              data.map((d: any) => ({
+                id: d.id,
+                pipelineId: d.pipeline_id,
+                name: d.name,
+                order: d.order,
+                autoTags: d.auto_tags || [],
+                autoTasks: d.auto_tasks || [],
+              })),
+            )
+          }
+        })
     }
   }, [user])
 
@@ -231,60 +263,137 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     updateWhatsAppConfig: (c: Partial<WhatsAppConfig>) =>
       setWhatsAppConfig((p) => ({ ...p, ...c })),
     addPipeline: (p: Omit<Pipeline, 'id'>, steps: string[]) => {
-      const newId = `p${Date.now()}`
-      setPipelines((prev) => [...prev, { ...p, id: newId }])
-      setPipelineStages((sPrev) => [
-        ...sPrev,
-        ...steps.map((name, i) => ({
-          id: `s${Date.now()}_${i}`,
-          pipelineId: newId,
-          name,
-          order: i,
-          autoTags: [],
-          autoTasks: [],
-        })),
-      ])
+      const newId = crypto.randomUUID()
+      const newPipeline = { ...p, id: newId }
+      setPipelines((prev) => [...prev, newPipeline])
+
+      const newStages = steps.map((name, i) => ({
+        id: crypto.randomUUID(),
+        pipelineId: newId,
+        name,
+        order: i,
+        autoTags: [],
+        autoTasks: [],
+      }))
+
+      setPipelineStages((sPrev) => [...sPrev, ...newStages])
+
+      if (user) {
+        supabase
+          .from('pipelines')
+          .insert({
+            id: newId,
+            name: p.name,
+            user_ids: p.userIds,
+            user_id: user.id,
+          })
+          .then(() => {
+            if (newStages.length > 0) {
+              supabase
+                .from('pipeline_stages')
+                .insert(
+                  newStages.map((s) => ({
+                    id: s.id,
+                    pipeline_id: s.pipelineId,
+                    name: s.name,
+                    order: s.order,
+                    auto_tags: s.autoTags,
+                    auto_tasks: s.autoTasks,
+                  })),
+                )
+                .then()
+            }
+          })
+      }
+
       toast.success('Pipeline criado com sucesso!')
       return newId
     },
     updatePipeline: (id: string, p: Partial<Pipeline>) => {
       setPipelines((prev) => prev.map((x) => (x.id === id ? { ...x, ...p } : x)))
+      const updateData: any = {}
+      if (p.name !== undefined) updateData.name = p.name
+      if (p.userIds !== undefined) updateData.user_ids = p.userIds
+      supabase.from('pipelines').update(updateData).eq('id', id).then()
       toast.success('Pipeline atualizado!')
     },
     deletePipeline: (id: string) => {
       setPipelines((prev) => prev.filter((x) => x.id !== id))
       setPipelineStages((prev) => prev.filter((x) => x.pipelineId !== id))
+      supabase.from('pipelines').delete().eq('id', id).then()
       toast.success('Pipeline removido com sucesso!')
     },
-    addPipelineStage: (s: Omit<PipelineStage, 'id' | 'order'>) =>
-      setPipelineStages((p) => [
-        ...p,
-        {
-          ...s,
-          id: `s${Date.now()}`,
-          order: p.filter((x) => x.pipelineId === s.pipelineId).length,
-        },
-      ]),
-    updatePipelineStage: (id: string, s: Partial<PipelineStage>) =>
-      setPipelineStages((p) => p.map((x) => (x.id === id ? { ...x, ...s } : x))),
-    deletePipelineStage: (id: string) =>
+    addPipelineStage: (s: Omit<PipelineStage, 'id' | 'order'>) => {
+      setPipelineStages((p) => {
+        const order = p.filter((x) => x.pipelineId === s.pipelineId).length
+        const newId = crypto.randomUUID()
+        const newStage = { ...s, id: newId, order }
+
+        supabase
+          .from('pipeline_stages')
+          .insert({
+            id: newId,
+            pipeline_id: s.pipelineId,
+            name: s.name,
+            order,
+            auto_tags: s.autoTags,
+            auto_tasks: s.autoTasks,
+          })
+          .then()
+
+        return [...p, newStage]
+      })
+    },
+    updatePipelineStage: (id: string, s: Partial<PipelineStage>) => {
+      setPipelineStages((p) => p.map((x) => (x.id === id ? { ...x, ...s } : x)))
+      const updateData: any = {}
+      if (s.name !== undefined) updateData.name = s.name
+      if (s.autoTags !== undefined) updateData.auto_tags = s.autoTags
+      if (s.autoTasks !== undefined) updateData.auto_tasks = s.autoTasks
+      supabase.from('pipeline_stages').update(updateData).eq('id', id).then()
+    },
+    deletePipelineStage: (id: string) => {
       setPipelineStages((p) => {
         const remaining = p.filter((x) => x.id !== id)
         const deleted = p.find((x) => x.id === id)
         if (!deleted) return remaining
+
         const sibs = remaining
           .filter((x) => x.pipelineId === deleted.pipelineId)
           .sort((a, b) => a.order - b.order)
+
         const sibsUpdated = sibs.map((x, i) => ({ ...x, order: i }))
+
+        supabase
+          .from('pipeline_stages')
+          .delete()
+          .eq('id', id)
+          .then(() => {
+            sibsUpdated.forEach((stage) => {
+              supabase
+                .from('pipeline_stages')
+                .update({ order: stage.order })
+                .eq('id', stage.id)
+                .then()
+            })
+          })
+
         return remaining.map((r) => sibsUpdated.find((su) => su.id === r.id) || r)
-      }),
-    reorderPipelineStages: (ids: string[]) =>
+      })
+    },
+    reorderPipelineStages: (ids: string[]) => {
       setPipelineStages((p) => {
         const m = new Map(p.map((s) => [s.id, s]))
         const updatedStages = ids.map((id, i) => ({ ...m.get(id)!, order: i }))
         const updatedIds = new Set(ids)
+
+        updatedStages.forEach((stage) => {
+          supabase.from('pipeline_stages').update({ order: stage.order }).eq('id', stage.id).then()
+        })
+
         return p.map((s) => (updatedIds.has(s.id) ? updatedStages.find((x) => x.id === s.id)! : s))
-      }),
+      })
+    },
     addAIFlow: (f: Omit<AIFlow, 'id'>) => {
       setAiFlows((p) => [...p, { ...f, id: `f${Date.now()}` }])
       toast.success('Fluxo IA criado com sucesso!')
