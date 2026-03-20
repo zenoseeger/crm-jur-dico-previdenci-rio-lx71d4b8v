@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import useLeadStore from '@/stores/useLeadStore'
 import { ChatTab } from './tabs/ChatTab'
 import { DocsTab } from './tabs/DocsTab'
-import { SummaryTab, QualTab, HistoryTab } from './tabs/InfoTabs'
+import { SummaryTab, HistoryTab } from './tabs/InfoTabs'
 import { TasksTab } from './tabs/TasksTab'
 import { Badge } from '@/components/ui/badge'
 import { LeadActions } from './LeadActions'
@@ -66,6 +66,12 @@ export function LeadDrawer() {
                 Resumo
               </TabsTrigger>
               <TabsTrigger
+                value="chat"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-3 data-[state=active]:shadow-none bg-transparent"
+              >
+                Conversa
+              </TabsTrigger>
+              <TabsTrigger
                 value="tasks"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-3 data-[state=active]:shadow-none bg-transparent"
               >
@@ -81,22 +87,10 @@ export function LeadDrawer() {
                   )}
               </TabsTrigger>
               <TabsTrigger
-                value="chat"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-3 data-[state=active]:shadow-none bg-transparent"
-              >
-                Conversa
-              </TabsTrigger>
-              <TabsTrigger
                 value="docs"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-3 data-[state=active]:shadow-none bg-transparent"
               >
                 Documentos
-              </TabsTrigger>
-              <TabsTrigger
-                value="qual"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-3 data-[state=active]:shadow-none bg-transparent"
-              >
-                Qualificação
               </TabsTrigger>
               <TabsTrigger
                 value="history"
@@ -115,28 +109,22 @@ export function LeadDrawer() {
               <SummaryTab lead={selectedLead} />
             </TabsContent>
             <TabsContent
-              value="tasks"
-              className="m-0 p-6 h-full focus-visible:outline-none animate-fade-in"
-            >
-              <TasksTab lead={selectedLead} />
-            </TabsContent>
-            <TabsContent
               value="chat"
               className="m-0 p-6 h-full focus-visible:outline-none animate-fade-in"
             >
               <ChatTab lead={selectedLead} />
             </TabsContent>
             <TabsContent
+              value="tasks"
+              className="m-0 p-6 h-full focus-visible:outline-none animate-fade-in"
+            >
+              <TasksTab lead={selectedLead} />
+            </TabsContent>
+            <TabsContent
               value="docs"
               className="m-0 p-6 h-full focus-visible:outline-none animate-fade-in"
             >
               <DocsTab lead={selectedLead} />
-            </TabsContent>
-            <TabsContent
-              value="qual"
-              className="m-0 p-6 h-full focus-visible:outline-none animate-fade-in"
-            >
-              <QualTab lead={selectedLead} />
             </TabsContent>
             <TabsContent
               value="history"

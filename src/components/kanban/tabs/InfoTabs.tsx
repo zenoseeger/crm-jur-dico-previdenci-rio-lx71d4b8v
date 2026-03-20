@@ -168,34 +168,6 @@ export function SummaryTab({ lead }: { lead: Lead }) {
   )
 }
 
-export function QualTab({ lead }: { lead: Lead }) {
-  return (
-    <div className="space-y-4">
-      <div className="bg-card border rounded-lg p-4 space-y-4 shadow-sm">
-        <h4 className="font-semibold text-sm border-b pb-2">Dados Estruturados</h4>
-        <div className="grid gap-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Tempo de Contribuição:</span>
-            <span className="font-medium">18 anos e 4 meses</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Idade:</span>
-            <span className="font-medium">62 anos</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Trabalho Rural:</span>
-            <span className="font-medium">Sim (1980 - 1995)</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Tentativa Anterior (INSS):</span>
-            <span className="font-medium text-destructive">Negado em 2022</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function HistoryTab() {
   const events = [
     { time: '14:30 Hoje', action: 'Lead movido para Análise Jurídica por SDR João' },
