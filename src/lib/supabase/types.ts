@@ -1,11 +1,17 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.4'
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
@@ -105,11 +111,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'clients_lead_id_fkey'
-            columns: ['lead_id']
+            foreignKeyName: "clients_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -149,18 +155,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'documents_client_id_fkey'
-            columns: ['client_id']
+            foreignKeyName: "documents_client_id_fkey"
+            columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: 'clients'
-            referencedColumns: ['id']
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'documents_lead_id_fkey'
-            columns: ['lead_id']
+            foreignKeyName: "documents_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -272,13 +278,75 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'messages_lead_id_fkey'
-            columns: ['lead_id']
+            foreignKeyName: "messages_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
+      }
+      pipeline_stages: {
+        Row: {
+          auto_tags: Json | null
+          auto_tasks: Json | null
+          created_at: string
+          id: string
+          name: string
+          order: number
+          pipeline_id: string
+        }
+        Insert: {
+          auto_tags?: Json | null
+          auto_tasks?: Json | null
+          created_at?: string
+          id?: string
+          name: string
+          order?: number
+          pipeline_id: string
+        }
+        Update: {
+          auto_tags?: Json | null
+          auto_tasks?: Json | null
+          created_at?: string
+          id?: string
+          name?: string
+          order?: number
+          pipeline_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipelines: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+          user_ids: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+          user_ids?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+          user_ids?: string[] | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -416,31 +484,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -449,23 +519,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -474,23 +544,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -499,36 +569,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -536,6 +606,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -617,6 +688,20 @@ export const Constants = {
 //   media_url: text (nullable)
 //   message_type: text (nullable, default: 'text'::text)
 //   created_at: timestamp with time zone (nullable, default: now())
+// Table: pipeline_stages
+//   id: text (not null, default: (gen_random_uuid())::text)
+//   pipeline_id: text (not null)
+//   name: text (not null)
+//   order: integer (not null, default: 0)
+//   auto_tags: jsonb (nullable, default: '[]'::jsonb)
+//   auto_tasks: jsonb (nullable, default: '[]'::jsonb)
+//   created_at: timestamp with time zone (not null, default: now())
+// Table: pipelines
+//   id: text (not null, default: (gen_random_uuid())::text)
+//   name: text (not null)
+//   user_ids: _uuid (nullable, default: '{}'::uuid[])
+//   created_at: timestamp with time zone (not null, default: now())
+//   user_id: uuid (not null)
 // Table: profiles
 //   id: uuid (not null)
 //   email: text (not null)
@@ -673,6 +758,12 @@ export const Constants = {
 //   CHECK messages_message_type_check: CHECK ((message_type = ANY (ARRAY['text'::text, 'image'::text, 'document'::text, 'audio'::text, 'video'::text, 'sticker'::text, 'location'::text, 'contact'::text, 'other'::text])))
 //   PRIMARY KEY messages_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY messages_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: pipeline_stages
+//   FOREIGN KEY pipeline_stages_pipeline_id_fkey: FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE
+//   PRIMARY KEY pipeline_stages_pkey: PRIMARY KEY (id)
+// Table: pipelines
+//   PRIMARY KEY pipelines_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY pipelines_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: profiles
 //   FOREIGN KEY profiles_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   PRIMARY KEY profiles_pkey: PRIMARY KEY (id)
@@ -739,6 +830,24 @@ export const Constants = {
 //   Policy "authenticated_update_messages" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
 //     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+// Table: pipeline_stages
+//   Policy "authenticated_delete_pipeline_stages" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_insert_pipeline_stages" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: true
+//   Policy "authenticated_select_pipeline_stages" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_update_pipeline_stages" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+// Table: pipelines
+//   Policy "authenticated_delete_pipelines" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//   Policy "authenticated_insert_pipelines" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (auth.uid() = user_id)
+//   Policy "authenticated_select_pipelines" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_update_pipelines" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: ((auth.uid() = user_id) OR (auth.uid() = ANY (user_ids)))
 // Table: profiles
 //   Policy "admin_all_profiles" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: (((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'Admin'::text))
@@ -792,10 +901,11 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 
 // --- INDEXES ---
 // Table: ai_configs
 //   CREATE UNIQUE INDEX ai_configs_user_id_key ON public.ai_configs USING btree (user_id)
 // Table: whatsapp_configs
 //   CREATE UNIQUE INDEX whatsapp_configs_user_id_key ON public.whatsapp_configs USING btree (user_id)
+
