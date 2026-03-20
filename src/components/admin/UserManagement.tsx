@@ -28,41 +28,90 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Edit2, Trash2 } from 'lucide-react'
+import { Edit2, Trash2, Plus, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { toast } from 'sonner'
 
 export function UserManagement() {
-  const { users, adminUpdateUser, adminDeleteUser } = useAuthStore()
+  const { users, adminCreateUser, adminUpdateUser, adminDeleteUser } = useAuthStore()
   const [isOpen, setIsOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'Usuário' as UserRole,
-    passwordHash: '',
+    role: 'SDR' as UserRole,
+    password: '',
+    confirmPassword: '',
   })
 
-  const handleOpenDialog = (user: RegisteredUser) => {
-    setEditingUser(user)
-    setFormData({ name: user.name, email: user.email, role: user.role, passwordHash: '' })
+  const handleOpenDialog = (user?: RegisteredUser) => {
+    if (user) {
+      setEditingUser(user)
+      setFormData({
+        name: user.name,
+        email: user.email,
+        role: user.role as UserRole,
+        password: '',
+        confirmPassword: '',
+      })
+    } else {
+      setEditingUser(null)
+      setFormData({ name: '', email: '', role: 'SDR', password: '', confirmPassword: '' })
+    }
     setIsOpen(true)
   }
 
-  const handleSubmit = () => {
-    if (editingUser) {
-      const payload: Partial<RegisteredUser> = {
-        name: formData.name,
-        email: formData.email,
-        role: formData.role,
-      }
-      if (formData.passwordHash.trim()) {
-        payload.passwordHash = formData.passwordHash.trim()
-      }
-      adminUpdateUser(editingUser.id, payload)
+  const handleSubmit = async () => {
+    if (!formData.name.trim() || !formData.email.trim()) {
+      toast.error('Preencha os campos obrigatórios.')
+      return
     }
-    setIsOpen(false)
+
+    if (!editingUser && !formData.password) {
+      toast.error('A senha é obrigatória para novos usuários.')
+      return
+    }
+
+    if (formData.password && formData.password !== formData.confirmPassword) {
+      toast.error('As senhas não coincidem.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      if (editingUser) {
+        const payload: any = {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+        }
+        if (formData.password.trim()) {
+          payload.password = formData.password.trim()
+        }
+        await adminUpdateUser(editingUser.id, payload)
+      } else {
+        await adminCreateUser({
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          password: formData.password,
+        })
+      }
+      setIsOpen(false)
+    } catch (error: any) {
+      toast.error(error.message || 'Ocorreu um erro ao salvar o usuário.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja remover este usuário?')) {
+      await adminDeleteUser(id)
+    }
   }
 
   return (
@@ -72,21 +121,27 @@ export function UserManagement() {
           <CardTitle>Gestão de Equipe</CardTitle>
           <CardDescription>Gerencie os acessos, senhas e permissões do sistema.</CardDescription>
         </div>
+        <Button
+          onClick={() => handleOpenDialog()}
+          className="bg-slate-900 text-white hover:bg-slate-800"
+        >
+          <Plus className="w-4 h-4 mr-2" /> Novo Usuário
+        </Button>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Editar Usuário</DialogTitle>
+              <DialogTitle>{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Nome Completo</Label>
+                <Label>Nome Completo *</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>E-mail</Label>
+                <Label>E-mail *</Label>
                 <Input
                   type="email"
                   value={formData.email}
@@ -94,16 +149,29 @@ export function UserManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Nova Senha (deixe em branco para não alterar)</Label>
+                <Label>
+                  {editingUser ? 'Nova Senha (deixe em branco para não alterar)' : 'Senha *'}
+                </Label>
                 <Input
                   type="password"
                   placeholder="••••••••"
-                  value={formData.passwordHash}
-                  onChange={(e) => setFormData({ ...formData, passwordHash: e.target.value })}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
               </div>
+              {(formData.password || !editingUser) && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label>Confirmar Senha *</Label>
+                  <Input
+                    type="password"
+                    placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
-                <Label>Função (Nível de Acesso)</Label>
+                <Label>Nível de Acesso *</Label>
                 <Select
                   value={formData.role}
                   onValueChange={(val) => setFormData({ ...formData, role: val as UserRole })}
@@ -122,10 +190,11 @@ export function UserManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsOpen(false)}>
+              <Button variant="outline" onClick={() => setIsOpen(false)} disabled={loading}>
                 Cancelar
               </Button>
-              <Button onClick={handleSubmit} className="bg-slate-900 text-white">
+              <Button onClick={handleSubmit} className="bg-slate-900 text-white" disabled={loading}>
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Salvar
               </Button>
             </DialogFooter>
@@ -144,32 +213,32 @@ export function UserManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
+            {users.map((u) => (
+              <TableRow key={u.id}>
+                <TableCell className="font-medium">{u.name}</TableCell>
+                <TableCell>{u.email}</TableCell>
                 <TableCell>
                   <Badge
                     variant="outline"
                     className={
-                      user.role === 'Admin'
+                      u.role === 'Admin'
                         ? 'border-amber-500 text-amber-700 dark:text-amber-500 bg-amber-500/10'
                         : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                     }
                   >
-                    {user.role}
+                    {u.role}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
-                  {user.createdAt
-                    ? format(new Date(user.createdAt), "dd 'de' MMM, yyyy", { locale: ptBR })
+                  {u.createdAt
+                    ? format(new Date(u.createdAt), "dd 'de' MMM, yyyy", { locale: ptBR })
                     : '-'}
                 </TableCell>
                 <TableCell className="text-right space-x-2">
-                  <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}>
+                  <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(u)}>
                     <Edit2 className="w-4 h-4 text-muted-foreground" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => adminDeleteUser(user.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(u.id)}>
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
                 </TableCell>
