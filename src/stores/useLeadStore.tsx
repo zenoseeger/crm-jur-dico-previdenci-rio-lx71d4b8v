@@ -489,6 +489,8 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const removeDocument = async (leadId: string, docId: string) => {
+    const doc = leads.find((l) => l.id === leadId)?.documents?.find((d) => d.id === docId)
+
     setLeads((p) =>
       p.map((l) =>
         l.id === leadId
@@ -496,6 +498,14 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
           : l,
       ),
     )
+
+    if (doc?.url && doc.url.includes('/storage/v1/object/public/documents/')) {
+      const filePath = doc.url.split('/documents/')[1]
+      if (filePath) {
+        supabase.storage.from('documents').remove([filePath])
+      }
+    }
+
     await supabase.from('documents').delete().eq('id', docId)
   }
 
