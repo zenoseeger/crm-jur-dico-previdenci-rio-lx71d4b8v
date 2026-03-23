@@ -8,6 +8,7 @@ import {
   KeyRound,
   Ban,
   Mail,
+  Copy,
 } from 'lucide-react'
 import { Lead } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
@@ -109,8 +110,16 @@ export function LeadCard({ lead, onOpen }: LeadCardProps) {
         <div className="flex justify-between items-start">
           <div className="space-y-1.5 pr-6 flex-1">
             <div className="flex items-center gap-1">
-              <h4 className="font-semibold text-sm leading-tight text-foreground truncate max-w-[85%]">
+              <h4 className="font-semibold text-sm leading-tight text-foreground truncate max-w-[85%] flex items-center gap-1.5">
                 {lead.name}
+                {lead.originId && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Copy className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Lead Duplicado/Sincronizado</TooltipContent>
+                  </Tooltip>
+                )}
               </h4>
               <Tooltip>
                 <TooltipTrigger asChild>

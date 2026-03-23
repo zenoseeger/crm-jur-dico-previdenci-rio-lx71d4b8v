@@ -33,6 +33,7 @@ interface LeadStore {
     tags?: string[],
     tasks?: TaskTemplate[],
   ) => Promise<void>
+  duplicateLead: (id: string, targetPipelineId: string, targetStage: string) => Promise<void>
   addLead: (lead: Lead) => void
   editLead: (id: string, updates: Partial<Lead>) => Promise<void>
   deleteLead: (id: string) => Promise<void>
@@ -91,9 +92,15 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
         if (docsRes.error) throw docsRes.error
 
         if (leadsRes.data) {
+          const originMap = new Map()
+          leadsRes.data.forEach((x) => {
+            if (x.origin_id) originMap.set(x.id, x.origin_id)
+          })
+
           setLeads(
             leadsRes.data.map((l) => ({
               id: l.id,
+              originId: l.origin_id || undefined,
               name: l.name,
               phone: l.phone,
               email: l.email || '',
@@ -117,7 +124,14 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
               createdAt: l.created_at,
               documents:
                 docsRes.data
-                  ?.filter((d) => d.lead_id === l.id)
+                  ?.filter((d) => {
+                    if (d.lead_id === l.id) return true
+                    if (l.origin_id) {
+                      const docOriginId = originMap.get(d.lead_id)
+                      if (docOriginId === l.origin_id || d.lead_id === l.origin_id) return true
+                    }
+                    return false
+                  })
                   .map((d) => ({
                     id: d.id,
                     name: d.name,
@@ -196,6 +210,9 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   }, [user, authLoading, fetchLeads, fetchTaskAutomations])
 
   const updateDb = async (id: string, updates: Partial<Lead>) => {
+    const l = leads.find((x) => x.id === id)
+    const originId = l?.originId
+
     const map: any = {}
     if (updates.stage !== undefined) map.stage = updates.stage
     if (updates.tags !== undefined) map.tags = updates.tags
@@ -206,7 +223,23 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     if (updates.aiEnabled !== undefined) map.ai_enabled = updates.aiEnabled
     if (updates.aiTriggered !== undefined) map.ai_triggered = updates.aiTriggered
     if (updates.unread !== undefined) map.unread = updates.unread
-    if (Object.keys(map).length > 0) await supabase.from('leads').update(map).eq('id', id)
+
+    if (Object.keys(map).length > 0) {
+      if (originId && (map.tags !== undefined || map.notes !== undefined)) {
+        const syncMap: any = {}
+        const localMap: any = {}
+        for (const [k, v] of Object.entries(map)) {
+          if (['tags', 'notes'].includes(k)) syncMap[k] = v
+          else localMap[k] = v
+        }
+        if (Object.keys(syncMap).length > 0)
+          await supabase.from('leads').update(syncMap).eq('origin_id', originId)
+        if (Object.keys(localMap).length > 0)
+          await supabase.from('leads').update(localMap).eq('id', id)
+      } else {
+        await supabase.from('leads').update(map).eq('id', id)
+      }
+    }
   }
 
   const addTaskAutomation = async (
@@ -257,6 +290,10 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const editLead = async (id: string, updates: Partial<Lead>) => {
+    const l = leads.find((x) => x.id === id)
+    if (!l) return
+    const originId = l.originId
+
     const map: any = {}
     if (updates.name !== undefined) map.name = updates.name
     if (updates.email !== undefined) map.email = updates.email
@@ -267,12 +304,38 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     if (updates.assignee !== undefined) map.assignee = updates.assignee
     if (updates.heat !== undefined) map.heat = updates.heat
 
+    const syncKeys = ['name', 'email', 'phone', 'benefit_type', 'city', 'assignee', 'heat']
+
     if (Object.keys(map).length > 0) {
-      const { error } = await supabase.from('leads').update(map).eq('id', id)
-      if (error) throw error
+      if (originId && Object.keys(map).some((k) => syncKeys.includes(k))) {
+        const syncMap: any = {}
+        const localMap: any = {}
+        for (const [k, v] of Object.entries(map)) {
+          if (syncKeys.includes(k)) syncMap[k] = v
+          else localMap[k] = v
+        }
+        if (Object.keys(syncMap).length > 0)
+          await supabase.from('leads').update(syncMap).eq('origin_id', originId)
+        if (Object.keys(localMap).length > 0)
+          await supabase.from('leads').update(localMap).eq('id', id)
+      } else {
+        const { error } = await supabase.from('leads').update(map).eq('id', id)
+        if (error) throw error
+      }
     }
 
-    setLeads((p) => p.map((l) => (l.id === id ? { ...l, ...updates } : l)))
+    setLeads((p) =>
+      p.map((x) => {
+        if (x.id === id) return { ...x, ...updates }
+        if (originId && x.originId === originId) {
+          const syncedUpdates = { ...updates }
+          delete syncedUpdates.stage
+          delete syncedUpdates.pipelineId
+          return { ...x, ...syncedUpdates }
+        }
+        return x
+      }),
+    )
   }
 
   const updateLeadLocal = (id: string, updates: Partial<Lead>) => {
@@ -360,7 +423,13 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
 
     const nl = { ...l, stage: to, lostReason: r || l.lostReason, tags, tasks, activeFlows }
 
-    setLeads((prev) => prev.map((lead) => (lead.id === leadId ? nl : lead)))
+    setLeads((prev) =>
+      prev.map((lead) => {
+        if (lead.id === leadId) return nl
+        if (l.originId && lead.originId === l.originId) return { ...lead, tags: nl.tags }
+        return lead
+      }),
+    )
     await updateDb(leadId, nl)
   }
 
@@ -381,6 +450,9 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   const addTagToLead = (leadId: string, tag: string) => {
     const l = leads.find((x) => x.id === leadId)
     if (!l || l.tags.includes(tag)) return
+
+    const originId = l.originId
+    const nlTags = [...l.tags, tag]
     const { tasks, activeFlows } = processTagsForFlows(
       l,
       [tag],
@@ -388,17 +460,91 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
       l.activeFlows || [],
       aiFlows,
     )
-    const nl = { ...l, tags: [...l.tags, tag], tasks, activeFlows }
-    setLeads((prev) => prev.map((x) => (x.id === leadId ? nl : x)))
-    updateDb(leadId, nl)
+
+    setLeads((prev) =>
+      prev.map((x) => {
+        if (x.id === leadId) return { ...x, tags: nlTags, tasks, activeFlows }
+        if (originId && x.originId === originId) return { ...x, tags: nlTags }
+        return x
+      }),
+    )
+    updateDb(leadId, { tags: nlTags, tasks, activeFlows })
   }
 
   const removeTagFromLead = (leadId: string, tag: string) => {
     const l = leads.find((x) => x.id === leadId)
     if (!l || !l.tags.includes(tag)) return
-    const nl = { ...l, tags: l.tags.filter((t) => t !== tag) }
-    setLeads((prev) => prev.map((x) => (x.id === leadId ? nl : x)))
-    updateDb(leadId, nl)
+
+    const originId = l.originId
+    const nlTags = l.tags.filter((t) => t !== tag)
+
+    setLeads((prev) =>
+      prev.map((x) => {
+        if (x.id === leadId) return { ...x, tags: nlTags }
+        if (originId && x.originId === originId) return { ...x, tags: nlTags }
+        return x
+      }),
+    )
+    updateDb(leadId, { tags: nlTags })
+  }
+
+  const duplicateLead = async (id: string, targetPipelineId: string, targetStage: string) => {
+    const l = leads.find((x) => x.id === id)
+    if (!l || !user) return
+
+    let originId = l.originId
+    if (!originId) {
+      originId = l.id
+      await supabase.from('leads').update({ origin_id: originId }).eq('id', l.id)
+    }
+
+    const newId = crypto.randomUUID()
+    const newLead: Lead = {
+      ...l,
+      id: newId,
+      pipelineId: targetPipelineId,
+      stage: targetStage,
+      originId,
+      tasks: [],
+      activeFlows: [],
+      unread: true,
+      timeInStage: '0m',
+      createdAt: new Date().toISOString(),
+    }
+
+    setLeads((p) => [newLead, ...p.map((x) => (x.id === l.id ? { ...x, originId } : x))])
+
+    const { error } = await supabase.from('leads').insert({
+      id: newLead.id,
+      name: newLead.name,
+      phone: newLead.phone,
+      email: newLead.email,
+      pipeline_id: newLead.pipelineId,
+      stage: newLead.stage,
+      heat: newLead.heat,
+      tags: newLead.tags,
+      time_in_stage: newLead.timeInStage,
+      unread: newLead.unread,
+      benefit_type: newLead.benefitType,
+      city: newLead.city,
+      assignee: newLead.assignee,
+      ai_score: newLead.aiScore,
+      ai_summary: newLead.aiSummary,
+      ai_enabled: newLead.aiEnabled,
+      ai_triggered: newLead.aiTriggered,
+      tasks: newLead.tasks,
+      active_flows: newLead.activeFlows,
+      notes: newLead.notes,
+      user_id: user.id,
+      origin_id: originId,
+    })
+
+    if (error) {
+      setLeads((p) => p.filter((x) => x.id !== newId))
+      throw error
+    }
+
+    toast.success('Lead duplicado com sucesso!')
   }
 
   const addTask = (leadId: string, task: Task) => {
@@ -434,6 +580,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
         active_flows: lead.activeFlows,
         notes: lead.notes,
         user_id: user.id,
+        origin_id: lead.originId || null,
       })
     }
   }
@@ -519,9 +666,25 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const updateLeadNotes = async (leadId: string, notes: string) => {
-    setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, notes } : l)))
-    const { error } = await supabase.from('leads').update({ notes }).eq('id', leadId)
-    if (error) throw error
+    const l = leads.find((x) => x.id === leadId)
+    if (!l) return
+
+    const originId = l.originId
+    setLeads((p) =>
+      p.map((x) => {
+        if (x.id === leadId) return { ...x, notes }
+        if (originId && x.originId === originId) return { ...x, notes }
+        return x
+      }),
+    )
+
+    if (originId) {
+      const { error } = await supabase.from('leads').update({ notes }).eq('origin_id', originId)
+      if (error) throw error
+    } else {
+      const { error } = await supabase.from('leads').update({ notes }).eq('id', leadId)
+      if (error) throw error
+    }
   }
 
   const value = {
@@ -546,6 +709,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
     editLead,
     updateLeadLocal,
     deleteLead,
+    duplicateLead,
     markAsRead,
     updateLeadStageNames,
     toggleTask,

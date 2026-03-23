@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { MoreVertical, Edit, Trash2, Loader2 } from 'lucide-react'
+import { MoreVertical, Edit, Trash2, Loader2, Copy } from 'lucide-react'
 import { Lead } from '@/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,12 +41,16 @@ import { useAdminStore } from '@/stores/useAdminStore'
 import { toast } from 'sonner'
 
 export function LeadActions({ lead }: { lead: Lead }) {
-  const { editLead, deleteLead } = useLeadStore()
-  const { pipelineStages, benefitTypes } = useAdminStore()
+  const { editLead, deleteLead, duplicateLead } = useLeadStore()
+  const { pipelineStages, benefitTypes, pipelines } = useAdminStore()
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [data, setData] = useState<Partial<Lead>>({})
   const [loading, setLoading] = useState(false)
+
+  const [dupPipeline, setDupPipeline] = useState('')
+  const [dupStage, setDupStage] = useState('')
 
   const handleEdit = () => {
     setData({ ...lead, heat: lead.heat || 'Morno' })
@@ -79,6 +84,20 @@ export function LeadActions({ lead }: { lead: Lead }) {
     }
   }
 
+  const handleDuplicate = async () => {
+    setLoading(true)
+    try {
+      await duplicateLead(lead.id, dupPipeline, dupStage)
+      setDuplicateOpen(false)
+      setDupPipeline('')
+      setDupStage('')
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao duplicar o lead')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const stages = pipelineStages.filter((s) => s.pipelineId === lead.pipelineId)
 
   return (
@@ -93,6 +112,10 @@ export function LeadActions({ lead }: { lead: Lead }) {
           <DropdownMenuItem onClick={handleEdit}>
             <Edit className="w-4 h-4 mr-2" />
             Editar Lead
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setDuplicateOpen(true)}>
+            <Copy className="w-4 h-4 mr-2" />
+            Duplicar Lead
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive">
@@ -209,13 +232,74 @@ export function LeadActions({ lead }: { lead: Lead }) {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={duplicateOpen} onOpenChange={setDuplicateOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Duplicar Lead</DialogTitle>
+            <DialogDescription>
+              Escolha o Pipeline e a Etapa para onde este lead será duplicado. Os dados como nome,
+              contato, notas e tags serão sincronizados automaticamente entre os leads.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Pipeline de Destino</Label>
+              <Select
+                value={dupPipeline}
+                onValueChange={(v) => {
+                  setDupPipeline(v)
+                  setDupStage('')
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um pipeline..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Etapa</Label>
+              <Select value={dupStage} onValueChange={setDupStage} disabled={!dupPipeline}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma etapa..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelineStages
+                    .filter((s) => s.pipelineId === dupPipeline)
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDuplicateOpen(false)} disabled={loading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleDuplicate} disabled={loading || !dupPipeline || !dupStage}>
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Duplicar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Lead?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this lead? This action cannot be undone and will
-              permanently remove the lead's data.
+              Tem certeza que deseja excluir este lead? Esta ação não pode ser desfeita. (Leads
+              duplicados não serão excluídos, apenas esta instância).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -80,6 +80,7 @@ export interface Lead {
   activeFlows?: { flowId: string; currentStepOrder: number }[]
   documents?: DocumentFile[]
   createdAt?: string
+  originId?: string
 }
 
 export interface Client {
