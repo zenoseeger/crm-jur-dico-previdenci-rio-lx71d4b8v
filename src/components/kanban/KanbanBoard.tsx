@@ -177,7 +177,7 @@ export function KanbanBoard() {
       </div>
 
       <ScrollArea className="w-full flex-1" orientation="horizontal">
-        <div className="flex h-full p-6 pb-2 gap-4">
+        <div className="flex h-full p-6 pb-2 gap-4 opacity-[0.99]">
           {sortedStages.map((stage) => (
             <KanbanColumn
               key={stage.id}
