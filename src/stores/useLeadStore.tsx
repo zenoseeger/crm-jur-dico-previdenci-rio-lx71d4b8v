@@ -73,18 +73,11 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
       if (!silent) setIsLoading(true)
       setError(null)
       try {
-        const isAdmin = user.email === 'zhseeger@gmail.com'
-
         let leadsQuery = supabase
           .from('leads')
           .select('*')
           .order('created_at', { ascending: false })
         let docsQuery = supabase.from('documents').select('*')
-
-        if (!isAdmin) {
-          leadsQuery = leadsQuery.eq('user_id', user.id)
-          docsQuery = docsQuery.eq('user_id', user.id)
-        }
 
         const [leadsRes, docsRes] = await Promise.all([leadsQuery, docsQuery])
 
@@ -100,6 +93,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
           setLeads(
             leadsRes.data.map((l) => ({
               id: l.id,
+              userId: l.user_id,
               originId: l.origin_id || undefined,
               name: l.name,
               phone: l.phone,
@@ -157,10 +151,7 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
   const fetchTaskAutomations = useCallback(async () => {
     if (!user) return
     try {
-      const { data, error } = await supabase
-        .from('task_automations')
-        .select('*')
-        .eq('user_id', user.id)
+      const { data, error } = await supabase.from('task_automations').select('*')
 
       if (error) throw error
       if (data) {
@@ -188,9 +179,6 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
       fetchTaskAutomations()
 
       const channelOptions: any = { event: '*', schema: 'public', table: 'leads' }
-      if (user.email !== 'zhseeger@gmail.com') {
-        channelOptions.filter = `user_id=eq.${user.id}`
-      }
 
       const channel = supabase
         .channel('leads_changes')
@@ -366,7 +354,6 @@ export const LeadProvider = ({ children }: { children: ReactNode }) => {
         .from('task_automations')
         .select('*')
         .eq('stage', to)
-        .eq('user_id', user.id)
 
       if (dbAutomations) {
         fetchedAutomations = dbAutomations

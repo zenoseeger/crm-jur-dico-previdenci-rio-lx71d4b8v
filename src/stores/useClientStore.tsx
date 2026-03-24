@@ -27,18 +27,11 @@ export const ClientProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return
 
     try {
-      const isAdmin = user.email === 'zhseeger@gmail.com'
-
       let clientsQuery = supabase
         .from('clients')
         .select('*')
         .order('created_at', { ascending: false })
       let docsQuery = supabase.from('documents').select('*')
-
-      if (!isAdmin) {
-        clientsQuery = clientsQuery.eq('user_id', user.id)
-        docsQuery = docsQuery.eq('user_id', user.id)
-      }
 
       const [{ data: dbClients }, { data: dbDocs }] = await Promise.all([clientsQuery, docsQuery])
 

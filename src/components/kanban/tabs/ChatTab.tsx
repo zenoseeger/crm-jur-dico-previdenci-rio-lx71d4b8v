@@ -66,8 +66,8 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
     supabase
       .from('whatsapp_configs')
       .select('*')
-      .eq('user_id', user.id)
-      .single()
+      .limit(1)
+      .maybeSingle()
       .then((res) => {
         if (res.data) setConfig(res.data)
       })
@@ -114,6 +114,8 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
 
   if (!lead) return null
 
+  const targetUserId = config?.user_id || (lead as any).userId || user?.id
+
   const aiEnabledForLead = lead.aiEnabled !== false
   const globalAiEnabled = aiConfig.enabled
   const isWaitingKeyword =
@@ -124,7 +126,7 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
     setIsSummarizing(true)
     try {
       const { data, error } = await supabase.functions.invoke('ai-observer', {
-        body: { leadId: lead.id, userId: user.id, action: 'summarize' },
+        body: { leadId: lead.id, userId: targetUserId, action: 'summarize' },
       })
       if (error) throw error
       if (data?.success) {
@@ -146,7 +148,12 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
     setTranscribingId(msgId)
     try {
       const { data, error } = await supabase.functions.invoke('ai-observer', {
-        body: { leadId: lead.id, userId: user.id, action: 'transcribe_audio', messageId: msgId },
+        body: {
+          leadId: lead.id,
+          userId: targetUserId,
+          action: 'transcribe_audio',
+          messageId: msgId,
+        },
       })
       if (error) throw error
       if (data?.success) {
@@ -191,7 +198,7 @@ export function ChatTab({ lead, className }: { lead: Lead; className?: string })
         prev.find((m) => m.id === data.id) ? prev : [...prev, data as Message],
       )
       supabase.functions
-        .invoke('ai-observer', { body: { leadId: lead.id, userId: user.id } })
+        .invoke('ai-observer', { body: { leadId: lead.id, userId: targetUserId } })
         .catch(() => {})
     }
 

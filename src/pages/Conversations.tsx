@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import useLeadStore from '@/stores/useLeadStore'
 import { ChatTab } from '@/components/kanban/tabs/ChatTab'
 import { Input } from '@/components/ui/input'
@@ -18,11 +19,18 @@ const formatTime = (dateStr: string) => {
 
 export default function Conversations() {
   const { leads, markAsRead } = useLeadStore()
-  const [activeLeadId, setActiveLeadId] = useState<string | null>(null)
+  const [searchParams] = useSearchParams()
+  const initialLeadId = searchParams.get('leadId')
+  const [activeLeadId, setActiveLeadId] = useState<string | null>(initialLeadId)
   const [search, setSearch] = useState('')
   const [lastMessages, setLastMessages] = useState<
     Record<string, { content: string; date: string }>
   >({})
+
+  useEffect(() => {
+    const leadId = searchParams.get('leadId')
+    if (leadId) setActiveLeadId(leadId)
+  }, [searchParams])
 
   useEffect(() => {
     const fetchLatest = async () => {
@@ -106,7 +114,10 @@ export default function Conversations() {
                     setActiveLeadId(lead.id)
                     if (lead.unread) markAsRead(lead.id)
                   }}
-                  className="opacity-[0.98] text-left hover:bg-muted/50 transition-colors p-3 border-b"
+                  className={cn(
+                    'opacity-[0.98] text-left hover:bg-muted/50 transition-colors p-3 border-b',
+                    isActive && 'bg-muted border-l-4 border-l-primary',
+                  )}
                 >
                   <div className="flex items-start gap-3">
                     <div className="relative shrink-0 mt-0.5">
