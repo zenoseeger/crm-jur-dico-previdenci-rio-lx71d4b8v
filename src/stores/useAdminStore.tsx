@@ -7,6 +7,7 @@ import {
   AIFlow,
   Pipeline,
   BenefitType,
+  TagCategory,
 } from '@/types'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
@@ -47,46 +48,13 @@ interface AdminStore {
 
 const AdminContext = createContext<AdminStore | undefined>(undefined)
 
-const initialPipelines: Pipeline[] = [{ id: 'p1', name: 'Aposentadoria (Padrão)', userIds: [] }]
-
-const initialTags: TagDef[] = [
-  { id: 't1', name: 'Aposentadoria Rural', color: '#22c55e', category: 'Tipo de Benefício' },
-  { id: 't2', name: 'Falta CNIS', color: '#ef4444', category: 'Status de Documentação' },
-  { id: 't3', name: 'Segurado Qualificado', color: '#3b82f6', category: 'Qualificação' },
-  { id: 't4', name: 'Urgente', color: '#f59e0b', category: 'Follow-up' },
-]
-
-const initialBenefitTypes: BenefitType[] = [
-  { id: 'b1', name: 'Aposentadoria por Idade', createdAt: new Date().toISOString() },
-  { id: 'b2', name: 'Aposentadoria Rural', createdAt: new Date().toISOString() },
-  { id: 'b3', name: 'BPC/LOAS', createdAt: new Date().toISOString() },
-  { id: 'b4', name: 'Pensão por Morte', createdAt: new Date().toISOString() },
-  { id: 'b5', name: 'Auxílio Doença', createdAt: new Date().toISOString() },
-  { id: 'b6', name: 'Outros', createdAt: new Date().toISOString() },
-]
-
-const initialPipelineStages: PipelineStage[] = [
-  { id: 's1', pipelineId: 'p1', name: 'NOVO LEAD', order: 0, autoTags: [], autoTasks: [] },
-  { id: 's2', pipelineId: 'p1', name: 'EM QUALIFICAÇÃO', order: 1, autoTags: [], autoTasks: [] },
-  {
-    id: 's3',
-    pipelineId: 'p1',
-    name: 'AGUARDANDO DOCUMENTOS',
-    order: 2,
-    autoTags: [],
-    autoTasks: [],
-  },
-  { id: 's4', pipelineId: 'p1', name: 'ANÁLISE JURÍDICA', order: 3, autoTags: [], autoTasks: [] },
-  { id: 's5', pipelineId: 'p1', name: 'CONTRATO ENVIADO', order: 4, autoTags: [], autoTasks: [] },
-  { id: 's6', pipelineId: 'p1', name: 'GANHO', order: 5, autoTags: [], autoTasks: [] },
-]
-
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth()
-  const [pipelines, setPipelines] = useState<Pipeline[]>(initialPipelines)
-  const [tags, setTags] = useState<TagDef[]>(initialTags)
-  const [benefitTypes, setBenefitTypes] = useState<BenefitType[]>(initialBenefitTypes)
-  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(initialPipelineStages)
+  const [pipelines, setPipelines] = useState<Pipeline[]>([])
+  const [tags, setTags] = useState<TagDef[]>([])
+  const [benefitTypes, setBenefitTypes] = useState<BenefitType[]>([])
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([])
+  const [aiFlows, setAiFlows] = useState<AIFlow[]>([])
 
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     apiKey: '',
@@ -114,30 +82,6 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     connectionType: 'official',
     webSessionStatus: 'disconnected',
   })
-
-  const [aiFlows, setAiFlows] = useState<AIFlow[]>([
-    {
-      id: 'f1',
-      name: 'Contato Urgente',
-      triggerTagName: 'Urgente',
-      steps: [
-        {
-          id: 's1',
-          order: 1,
-          prompt: 'Crie uma mensagem urgente para agendar a reunião de fechamento hoje.',
-          dueInDays: 0,
-          media: [
-            {
-              id: 'm1',
-              type: 'image',
-              url: 'https://img.usecurling.com/p/200/200?q=document',
-              name: 'documento_exemplo.jpg',
-            },
-          ],
-        },
-      ],
-    },
-  ])
 
   useEffect(() => {
     if (user) {
@@ -173,7 +117,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         .from('pipelines')
         .select('*')
         .then(({ data, error }) => {
-          if (!error && data && data.length > 0) {
+          if (!error && data) {
             setPipelines(
               data.map((d: any) => ({
                 id: d.id,
@@ -189,7 +133,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         .select('*')
         .order('order', { ascending: true })
         .then(({ data, error }) => {
-          if (!error && data && data.length > 0) {
+          if (!error && data) {
             setPipelineStages(
               data.map((d: any) => ({
                 id: d.id,
@@ -202,10 +146,63 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
             )
           }
         })
+
+      supabase
+        .from('tags')
+        .select('*')
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setTags(
+              data.map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                color: d.color,
+                category: d.category as TagCategory,
+              })),
+            )
+          }
+        })
+
+      supabase
+        .from('benefit_types')
+        .select('*')
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setBenefitTypes(
+              data.map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                createdAt: d.created_at,
+              })),
+            )
+          }
+        })
+
+      supabase
+        .from('ai_flows')
+        .select('*')
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setAiFlows(
+              data.map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                triggerTagName: d.trigger_tag_name,
+                steps: d.steps || [],
+              })),
+            )
+          }
+        })
+    } else {
+      setPipelines([])
+      setPipelineStages([])
+      setTags([])
+      setBenefitTypes([])
+      setAiFlows([])
     }
   }, [user])
 
-  const value = {
+  const value: AdminStore = {
     pipelines,
     tags,
     benefitTypes,
@@ -213,23 +210,54 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     whatsAppConfig,
     pipelineStages,
     aiFlows,
-    addTag: (t: Omit<TagDef, 'id'>) => setTags((p) => [...p, { ...t, id: `t${Date.now()}` }]),
-    updateTag: (id: string, t: Partial<TagDef>) =>
-      setTags((p) => p.map((x) => (x.id === id ? { ...x, ...t } : x))),
-    deleteTag: (id: string) => setTags((p) => p.filter((x) => x.id !== id)),
+    addTag: (t: Omit<TagDef, 'id'>) => {
+      const tempId = `t${Date.now()}`
+      setTags((p) => [...p, { ...t, id: tempId }])
+      if (user) {
+        supabase
+          .from('tags')
+          .insert({
+            id: tempId,
+            name: t.name,
+            color: t.color,
+            category: t.category,
+            user_id: user.id,
+          })
+          .then()
+      }
+      toast.success('Tag criada com sucesso!')
+    },
+    updateTag: (id: string, t: Partial<TagDef>) => {
+      setTags((p) => p.map((x) => (x.id === id ? { ...x, ...t } : x)))
+      const updateData: any = {}
+      if (t.name !== undefined) updateData.name = t.name
+      if (t.color !== undefined) updateData.color = t.color
+      if (t.category !== undefined) updateData.category = t.category
+      supabase.from('tags').update(updateData).eq('id', id).then()
+      toast.success('Tag atualizada com sucesso!')
+    },
+    deleteTag: (id: string) => {
+      setTags((p) => p.filter((x) => x.id !== id))
+      supabase.from('tags').delete().eq('id', id).then()
+      toast.success('Tag excluída com sucesso!')
+    },
     addBenefitType: (name: string) => {
-      setBenefitTypes((p) => [
-        ...p,
-        { id: `b${Date.now()}`, name, createdAt: new Date().toISOString() },
-      ])
+      const tempId = `b${Date.now()}`
+      const createdAt = new Date().toISOString()
+      setBenefitTypes((p) => [...p, { id: tempId, name, createdAt }])
+      if (user) {
+        supabase.from('benefit_types').insert({ id: tempId, name, user_id: user.id }).then()
+      }
       toast.success('Produto criado com sucesso!')
     },
     updateBenefitType: (id: string, name: string) => {
       setBenefitTypes((p) => p.map((x) => (x.id === id ? { ...x, name } : x)))
+      supabase.from('benefit_types').update({ name }).eq('id', id).then()
       toast.success('Produto atualizado com sucesso!')
     },
     deleteBenefitType: (id: string) => {
       setBenefitTypes((p) => p.filter((x) => x.id !== id))
+      supabase.from('benefit_types').delete().eq('id', id).then()
       toast.success('Produto excluído com sucesso!')
     },
     updateAIConfig: (c: Partial<AIConfig>) => {
@@ -395,15 +423,34 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       })
     },
     addAIFlow: (f: Omit<AIFlow, 'id'>) => {
-      setAiFlows((p) => [...p, { ...f, id: `f${Date.now()}` }])
+      const tempId = `f${Date.now()}`
+      setAiFlows((p) => [...p, { ...f, id: tempId }])
+      if (user) {
+        supabase
+          .from('ai_flows')
+          .insert({
+            id: tempId,
+            name: f.name,
+            trigger_tag_name: f.triggerTagName,
+            steps: f.steps as any,
+            user_id: user.id,
+          })
+          .then()
+      }
       toast.success('Fluxo IA criado com sucesso!')
     },
     updateAIFlow: (id: string, f: Partial<AIFlow>) => {
       setAiFlows((p) => p.map((x) => (x.id === id ? { ...x, ...f } : x)))
+      const updateData: any = {}
+      if (f.name !== undefined) updateData.name = f.name
+      if (f.triggerTagName !== undefined) updateData.trigger_tag_name = f.triggerTagName
+      if (f.steps !== undefined) updateData.steps = f.steps as any
+      supabase.from('ai_flows').update(updateData).eq('id', id).then()
       toast.success('Fluxo IA atualizado com sucesso!')
     },
     deleteAIFlow: (id: string) => {
       setAiFlows((p) => p.filter((x) => x.id !== id))
+      supabase.from('ai_flows').delete().eq('id', id).then()
       toast.success('Fluxo IA removido.')
     },
   }
