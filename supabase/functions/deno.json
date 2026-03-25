@@ -1,6 +1,6 @@
 {
   "_versions": {
-    "zapi-webhook": 9,
+    "zapi-webhook": 10,
     "ai-observer": 7,
     "admin-users": 3
   }
