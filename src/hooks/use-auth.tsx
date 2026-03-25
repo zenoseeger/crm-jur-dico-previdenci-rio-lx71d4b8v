@@ -28,15 +28,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+      if (event === 'SIGNED_OUT') {
+        setSession(null)
+        setUser(null)
+      } else {
+        setSession(session)
+        setUser(session?.user ?? null)
+      }
       setLoading(false)
     })
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          console.error('Auth hook getSession error:', error)
+          if (error.message.toLowerCase().includes('refresh token')) {
+            // Se o refresh token for inválido, forçamos o logout e limpamos a sessão local
+            supabase.auth.signOut().catch(() => {})
+          }
+          setSession(null)
+          setUser(null)
+        } else {
+          setSession(session)
+          setUser(session?.user ?? null)
+        }
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error('Auth hook getSession catch:', err)
+        setSession(null)
+        setUser(null)
+        setLoading(false)
+      })
+
     return () => subscription.unsubscribe()
   }, [])
 

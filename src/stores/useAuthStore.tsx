@@ -62,28 +62,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) console.error('Auth session error:', error)
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email || '',
-          role:
-            session.user.user_metadata?.role ||
-            (session.user.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR'),
-        })
-        fetchUsers()
-      } else {
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          console.error('Auth store getSession error:', error)
+          if (error.message.toLowerCase().includes('refresh token')) {
+            // Refresh token expirado/inválido: limpar a sessão ativa no cliente
+            supabase.auth.signOut().catch(() => {})
+          }
+        }
+
+        if (session?.user && !error) {
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            email: session.user.email || '',
+            role:
+              session.user.user_metadata?.role ||
+              (session.user.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR'),
+          })
+          fetchUsers()
+        } else {
+          setUser(null)
+        }
+        setIsLoading(false)
+      })
+      .catch((err) => {
+        console.error('Auth store getSession catch:', err)
         setUser(null)
-      }
-      setIsLoading(false)
-    })
+        setIsLoading(false)
+      })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setUsers([])
+      } else if (session?.user) {
         setUser({
           id: session.user.id,
           name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
