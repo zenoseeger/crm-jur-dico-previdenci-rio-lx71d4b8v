@@ -1,11 +1,17 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.4'
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
@@ -105,11 +111,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'clients_lead_id_fkey'
-            columns: ['lead_id']
+            foreignKeyName: "clients_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -149,18 +155,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'documents_client_id_fkey'
-            columns: ['client_id']
+            foreignKeyName: "documents_client_id_fkey"
+            columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: 'clients'
-            referencedColumns: ['id']
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'documents_lead_id_fkey'
-            columns: ['lead_id']
+            foreignKeyName: "documents_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -275,11 +281,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'messages_lead_id_fkey'
-            columns: ['lead_id']
+            foreignKeyName: "messages_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -313,11 +319,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'pipeline_stages_pipeline_id_fkey'
-            columns: ['pipeline_id']
+            foreignKeyName: "pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
             isOneToOne: false
-            referencedRelation: 'pipelines'
-            referencedColumns: ['id']
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -481,31 +487,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -514,23 +522,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -539,23 +547,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -564,36 +572,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -601,6 +609,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -786,45 +795,21 @@ export const Constants = {
 //     USING: (auth.uid() = user_id)
 //     WITH CHECK: (auth.uid() = user_id)
 // Table: clients
-//   Policy "authenticated_delete_clients" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_insert_clients" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_select_clients" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_update_clients" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+//   Policy "authenticated_all_clients" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: documents
-//   Policy "authenticated_delete_documents" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_insert_documents" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_select_documents" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_update_documents" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+//   Policy "authenticated_all_documents" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: leads
-//   Policy "authenticated_delete_leads" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_insert_leads" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_select_leads" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_update_leads" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+//   Policy "authenticated_all_leads" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: messages
-//   Policy "authenticated_delete_messages" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_insert_messages" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_select_messages" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//   Policy "authenticated_update_messages" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
-//     WITH CHECK: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
+//   Policy "authenticated_all_messages" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: pipeline_stages
 //   Policy "authenticated_delete_pipeline_stages" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -849,19 +834,13 @@ export const Constants = {
 //   Policy "authenticated_select_profiles" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
 // Table: task_automations
-//   Policy "authenticated_delete_task_automations" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
-//   Policy "authenticated_insert_task_automations" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (auth.uid() = user_id)
-//   Policy "authenticated_select_task_automations" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
-//   Policy "authenticated_update_task_automations" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
-//     WITH CHECK: (auth.uid() = user_id)
+//   Policy "authenticated_all_task_automations" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: whatsapp_configs
 //   Policy "authenticated_all_whatsapp_configs" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = user_id)
-//     WITH CHECK: (auth.uid() = user_id)
+//     USING: true
+//     WITH CHECK: true
 // Table: whatsapp_logs
 //   Policy "authenticated_delete_whatsapp_logs" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: ((auth.uid() = user_id) OR ((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text))
@@ -896,7 +875,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 
 // --- INDEXES ---
 // Table: ai_configs
@@ -905,3 +884,4 @@ export const Constants = {
 //   CREATE INDEX leads_origin_id_idx ON public.leads USING btree (origin_id)
 // Table: whatsapp_configs
 //   CREATE UNIQUE INDEX whatsapp_configs_user_id_key ON public.whatsapp_configs USING btree (user_id)
+
