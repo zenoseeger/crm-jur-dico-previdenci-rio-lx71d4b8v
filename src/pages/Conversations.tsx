@@ -8,7 +8,6 @@ import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { isToday, isYesterday, format } from 'date-fns'
-import { Badge } from '@/components/ui/badge'
 
 const formatTime = (dateStr: string) => {
   const date = new Date(dateStr)
@@ -38,6 +37,7 @@ export default function Conversations() {
         .from('messages')
         .select('lead_id, content, created_at')
         .order('created_at', { ascending: false })
+        .limit(3000)
 
       if (data) {
         const map: Record<string, any> = {}
@@ -69,7 +69,7 @@ export default function Conversations() {
   }, [])
 
   const sortedLeads = leads
-    .filter((l) => l.name.toLowerCase().includes(search.toLowerCase()) || l.phone.includes(search))
+    .filter((l) => l.name.toLowerCase().includes(search.toLowerCase()) || l.phone?.includes(search))
     .sort((a, b) => {
       const dateA = lastMessages[a.id]?.date
         ? new Date(lastMessages[a.id].date).getTime()
