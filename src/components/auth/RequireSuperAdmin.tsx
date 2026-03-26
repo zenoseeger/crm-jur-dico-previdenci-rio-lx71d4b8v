@@ -7,19 +7,21 @@ import { ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function RequireSuperAdmin({ children }: { children: JSX.Element }) {
-  const { user, isLoading } = useAuthStore()
+  const { profile, loading } = useAuthStore()
+
+  const isSuperAdmin = profile?.is_super_admin || profile?.email === 'zhseeger@gmail.com'
 
   useEffect(() => {
-    if (!isLoading && user && !user.isSuperAdmin) {
+    if (!loading && profile && !isSuperAdmin) {
       toast.error('Acesso Bloqueado: Privilégios insuficientes.', {
         description: 'Esta área é restrita aos administradores globais do sistema.',
       })
     }
-  }, [user, isLoading])
+  }, [profile, loading, isSuperAdmin])
 
-  if (isLoading) return null
+  if (loading) return null
 
-  if (!user || !user.isSuperAdmin) {
+  if (!profile || !isSuperAdmin) {
     return (
       <div className="p-6 max-w-2xl mx-auto mt-10 animate-fade-in-up">
         <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">

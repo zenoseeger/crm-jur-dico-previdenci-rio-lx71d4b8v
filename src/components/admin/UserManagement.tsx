@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useAuthStore, RegisteredUser } from '@/stores/useAuthStore'
-import { UserRole } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,14 +32,16 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 
+export type UserRole = 'Admin' | 'Usuário' | 'SDR' | 'Closer' | 'Advogado'
+
 export function UserManagement() {
-  const { users, adminCreateUser, adminUpdateUser, adminDeleteUser, user, companies } =
+  const { users, adminCreateUser, adminUpdateUser, adminDeleteUser, profile, companies } =
     useAuthStore()
   const [isOpen, setIsOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const isSuperAdmin = user?.isSuperAdmin
+  const isSuperAdmin = profile?.is_super_admin || profile?.email === 'zhseeger@gmail.com'
 
   const [formData, setFormData] = useState({
     name: '',
@@ -48,7 +49,7 @@ export function UserManagement() {
     role: 'SDR' as UserRole,
     password: '',
     confirmPassword: '',
-    companyId: user?.companyId || '',
+    companyId: profile?.company_id || '',
   })
 
   const handleOpenDialog = (targetUser?: RegisteredUser) => {
@@ -58,7 +59,7 @@ export function UserManagement() {
         name: targetUser.name,
         email: targetUser.email,
         role: targetUser.role as UserRole,
-        companyId: targetUser.companyId || user?.companyId || '',
+        companyId: targetUser.companyId || profile?.company_id || '',
         password: '',
         confirmPassword: '',
       })
@@ -68,7 +69,7 @@ export function UserManagement() {
         name: '',
         email: '',
         role: 'SDR',
-        companyId: user?.companyId || '',
+        companyId: profile?.company_id || '',
         password: '',
         confirmPassword: '',
       })
