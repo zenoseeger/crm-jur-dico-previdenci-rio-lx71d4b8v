@@ -63,11 +63,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setCompany: (company) => set({ company }),
   fetchProfile: async (userId) => {
     try {
-      const { data: profile, error } = await supabase
+      let { data: profile, error } = await supabase
         .from('profiles')
         .select('*, companies(*)')
         .eq('id', userId)
         .single()
+
+      // Fallback to gracefully handle PGRST200 while schema cache reloads
+      if (error && error.code === 'PGRST200') {
+        console.warn(
+          'Relationship profiles -> companies not found in schema cache. Using fallback.',
+        )
+        const fallback = await supabase.from('profiles').select('*').eq('id', userId).single()
+        profile = fallback.data
+        error = fallback.error
+      }
 
       if (error) {
         console.error('Error fetching profile:', error)
@@ -122,10 +132,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   fetchUsers: async () => {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('profiles')
       .select('*, companies(name)')
       .order('created_at', { ascending: false })
+
+    // Fallback to gracefully handle PGRST200 while schema cache reloads
+    if (error && error.code === 'PGRST200') {
+      const fallbackData = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+      data = fallbackData.data
+      error = fallbackData.error
+    }
+
     if (!error && data) {
       const users = data.map((p) => {
         const comp = p.companies
