@@ -1,11 +1,17 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.4'
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
@@ -153,13 +159,34 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'clients_lead_id_fkey'
-            columns: ['lead_id']
+            foreignKeyName: "clients_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
+      }
+      companies: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string | null
+        }
+        Relationships: []
       }
       documents: {
         Row: {
@@ -197,18 +224,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'documents_client_id_fkey'
-            columns: ['client_id']
+            foreignKeyName: "documents_client_id_fkey"
+            columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: 'clients'
-            referencedColumns: ['id']
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'documents_lead_id_fkey'
-            columns: ['lead_id']
+            foreignKeyName: "documents_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -323,11 +350,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'messages_lead_id_fkey'
-            columns: ['lead_id']
+            foreignKeyName: "messages_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -361,11 +388,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'pipeline_stages_pipeline_id_fkey'
-            columns: ['pipeline_id']
+            foreignKeyName: "pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
             isOneToOne: false
-            referencedRelation: 'pipelines'
-            referencedColumns: ['id']
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -395,27 +422,44 @@ export type Database = {
       }
       profiles: {
         Row: {
+          company_id: string | null
           created_at: string
           email: string
           id: string
+          is_admin: boolean | null
+          is_super_admin: boolean | null
           name: string | null
           role: string | null
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           email: string
           id: string
+          is_admin?: boolean | null
+          is_super_admin?: boolean | null
           name?: string | null
           role?: string | null
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           email?: string
           id?: string
+          is_admin?: boolean | null
+          is_super_admin?: boolean | null
           name?: string | null
           role?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tags: {
         Row: {
@@ -556,31 +600,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -589,23 +635,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -614,23 +660,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -639,36 +685,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -676,6 +722,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -727,6 +774,11 @@ export const Constants = {
 //   city: text (nullable)
 //   benefit_type: text (nullable)
 //   cpf: text (nullable)
+// Table: companies
+//   id: uuid (not null, default: gen_random_uuid())
+//   name: text (not null)
+//   status: text (nullable, default: 'active'::text)
+//   created_at: timestamp with time zone (not null, default: now())
 // Table: documents
 //   id: uuid (not null, default: gen_random_uuid())
 //   created_at: timestamp with time zone (not null, default: now())
@@ -790,6 +842,9 @@ export const Constants = {
 //   name: text (nullable)
 //   role: text (nullable, default: 'SDR'::text)
 //   created_at: timestamp with time zone (not null, default: now())
+//   company_id: uuid (nullable)
+//   is_admin: boolean (nullable, default: false)
+//   is_super_admin: boolean (nullable, default: false)
 // Table: tags
 //   id: text (not null, default: (gen_random_uuid())::text)
 //   user_id: uuid (not null)
@@ -839,6 +894,8 @@ export const Constants = {
 //   FOREIGN KEY clients_lead_id_fkey: FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
 //   PRIMARY KEY clients_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY clients_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: companies
+//   PRIMARY KEY companies_pkey: PRIMARY KEY (id)
 // Table: documents
 //   FOREIGN KEY documents_client_id_fkey: FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
 //   FOREIGN KEY documents_lead_id_fkey: FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE
@@ -860,6 +917,7 @@ export const Constants = {
 //   PRIMARY KEY pipelines_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY pipelines_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: profiles
+//   FOREIGN KEY profiles_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL
 //   FOREIGN KEY profiles_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   PRIMARY KEY profiles_pkey: PRIMARY KEY (id)
 // Table: tags
@@ -900,6 +958,11 @@ export const Constants = {
 //   Policy "authenticated_all_clients" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: companies
+//   Policy "authenticated_select_companies" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "superadmin_all_companies" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: (((auth.jwt() ->> 'email'::text) = 'zhseeger@gmail.com'::text) OR (EXISTS ( SELECT 1    FROM profiles   WHERE ((profiles.id = auth.uid()) AND (profiles.is_super_admin = true)))))
 // Table: documents
 //   Policy "authenticated_all_documents" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -966,12 +1029,14 @@ export const Constants = {
 //    SECURITY DEFINER
 //   AS $function$
 //   BEGIN
-//     INSERT INTO public.profiles (id, email, name, role, created_at)
+//     INSERT INTO public.profiles (id, email, name, role, is_admin, is_super_admin, created_at)
 //     VALUES (
 //       NEW.id,
 //       NEW.email,
 //       NEW.raw_user_meta_data->>'name',
 //       COALESCE(NEW.raw_user_meta_data->>'role', 'SDR'),
+//       COALESCE((NEW.raw_user_meta_data->>'is_admin')::boolean, false),
+//       COALESCE((NEW.raw_user_meta_data->>'is_super_admin')::boolean, false),
 //       NEW.created_at
 //     )
 //     ON CONFLICT (id) DO UPDATE SET
@@ -981,7 +1046,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION handle_new_user_seed()
 //   CREATE OR REPLACE FUNCTION public.handle_new_user_seed()
 //    RETURNS trigger
@@ -994,7 +1059,7 @@ export const Constants = {
 //       ('t2_' || NEW.id, NEW.id, 'Falta CNIS', '#ef4444', 'Status de Documentação'),
 //       ('t3_' || NEW.id, NEW.id, 'Segurado Qualificado', '#3b82f6', 'Qualificação'),
 //       ('t4_' || NEW.id, NEW.id, 'Urgente', '#f59e0b', 'Follow-up');
-//
+//   
 //     INSERT INTO public.benefit_types (id, user_id, name) VALUES
 //       ('b1_' || NEW.id, NEW.id, 'Aposentadoria por Idade'),
 //       ('b2_' || NEW.id, NEW.id, 'Aposentadoria Rural'),
@@ -1002,13 +1067,13 @@ export const Constants = {
 //       ('b4_' || NEW.id, NEW.id, 'Pensão por Morte'),
 //       ('b5_' || NEW.id, NEW.id, 'Auxílio Doença'),
 //       ('b6_' || NEW.id, NEW.id, 'Outros');
-//
+//   
 //     INSERT INTO public.ai_flows (id, user_id, name, trigger_tag_name, steps) VALUES
 //       ('f1_' || NEW.id, NEW.id, 'Contato Urgente', 'Urgente', '[{"id": "s1", "order": 1, "media": [{"id": "m1", "url": "https://img.usecurling.com/p/200/200?q=document", "name": "documento_exemplo.jpg", "type": "image"}], "prompt": "Crie uma mensagem urgente para agendar a reunião de fechamento hoje.", "dueInDays": 0}]'::jsonb);
-//
+//   
 //     INSERT INTO public.pipelines (id, user_id, name, user_ids) VALUES
 //       ('p1_' || NEW.id, NEW.id, 'Aposentadoria (Padrão)', ARRAY[NEW.id]);
-//
+//       
 //     INSERT INTO public.pipeline_stages (id, pipeline_id, name, "order") VALUES
 //       (gen_random_uuid()::text, 'p1_' || NEW.id, 'NOVO LEAD', 0),
 //       (gen_random_uuid()::text, 'p1_' || NEW.id, 'EM QUALIFICAÇÃO', 1),
@@ -1016,11 +1081,11 @@ export const Constants = {
 //       (gen_random_uuid()::text, 'p1_' || NEW.id, 'ANÁLISE JURÍDICA', 3),
 //       (gen_random_uuid()::text, 'p1_' || NEW.id, 'CONTRATO ENVIADO', 4),
 //       (gen_random_uuid()::text, 'p1_' || NEW.id, 'GANHO', 5);
-//
+//   
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 
 // --- INDEXES ---
 // Table: ai_configs
@@ -1029,3 +1094,4 @@ export const Constants = {
 //   CREATE INDEX leads_origin_id_idx ON public.leads USING btree (origin_id)
 // Table: whatsapp_configs
 //   CREATE UNIQUE INDEX whatsapp_configs_user_id_key ON public.whatsapp_configs USING btree (user_id)
+
