@@ -3,10 +3,10 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { Loader2 } from 'lucide-react'
 
 export function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading } = useAuthStore()
+  const { user, loading } = useAuthStore()
   const location = useLocation()
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -14,7 +14,7 @@ export function RequireAuth({ children }: { children: JSX.Element }) {
     )
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     // Sanitize the return URL to prevent wildcard or incorrectly formatted path navigation errors
     const isInvalidPath = location.pathname.includes('*') || location.pathname === '/*'
     const returnPath = isInvalidPath ? '/dashboard' : location.pathname

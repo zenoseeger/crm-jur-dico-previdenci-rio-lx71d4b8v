@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useAuthStore } from '@/stores/useAuthStore'
+import { useAuth } from '@/hooks/use-auth'
 import {
   Card,
   CardHeader,
@@ -20,7 +20,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { login } = useAuthStore()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -37,7 +37,12 @@ export default function Login() {
 
     setLoading(true)
     try {
-      await login(cleanEmail, password)
+      const { error } = await signIn(cleanEmail, password)
+
+      if (error) {
+        throw error
+      }
+
       toast.success('Acesso autorizado com sucesso!')
 
       const fromPath = location.state?.from?.pathname
