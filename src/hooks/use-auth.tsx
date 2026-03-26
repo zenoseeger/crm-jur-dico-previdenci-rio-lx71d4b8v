@@ -1,14 +1,14 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 interface AuthContextType {
   user: User | null
   session: Session | null
-  signUp: (email: string, password: string) => Promise<{ error: any }>
+  loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
-  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -24,67 +24,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const fetchProfile = useAuthStore((state) => state.fetchProfile)
+  const setStoreUser = useAuthStore((state) => state.setUser)
+  const setStoreProfile = useAuthStore((state) => state.setProfile)
+  const setStoreCompany = useAuthStore((state) => state.setCompany)
+
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setSession(null)
-        setUser(null)
+      setSession(session)
+      setUser(session?.user ?? null)
+      setStoreUser(session?.user ?? null)
+
+      if (session?.user) {
+        fetchProfile(session.user.id).finally(() => setLoading(false))
       } else {
-        setSession(session)
-        setUser(session?.user ?? null)
+        setStoreProfile(null)
+        setStoreCompany(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
 
-    supabase.auth
-      .getSession()
-      .then(({ data: { session }, error }) => {
-        if (error) {
-          console.error('Auth hook getSession error:', error)
-          if (error.message.toLowerCase().includes('refresh token')) {
-            // Se o refresh token for inválido, forçamos o logout e limpamos a sessão local
-            supabase.auth.signOut().catch(() => {})
-          }
-          setSession(null)
-          setUser(null)
-        } else {
-          setSession(session)
-          setUser(session?.user ?? null)
-        }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      setStoreUser(session?.user ?? null)
+
+      if (session?.user) {
+        fetchProfile(session.user.id).finally(() => setLoading(false))
+      } else {
         setLoading(false)
-      })
-      .catch((err) => {
-        console.error('Auth hook getSession catch:', err)
-        setSession(null)
-        setUser(null)
-        setLoading(false)
-      })
+      }
+    })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [fetchProfile, setStoreUser, setStoreProfile, setStoreCompany])
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/` },
-    })
-    return { error }
-  }
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     return { error }
   }
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
+    useAuthStore.getState().signOut()
     return { error }
   }
 
-  return (
-    <AuthContext.Provider value={{ user, session, signUp, signIn, signOut, loading }}>
-      {children}
-    </AuthContext.Provider>
+  return React.createElement(
+    AuthContext.Provider,
+    { value: { user, session, loading, signIn, signOut } },
+    children,
   )
 }
