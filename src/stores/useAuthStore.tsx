@@ -6,9 +6,14 @@ import React, {
   useEffect,
   useCallback,
 } from 'react'
-import { User } from '@/types'
+import { User as BaseUser } from '@/types'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase/client'
+
+export interface User extends BaseUser {
+  companyId?: string
+  companyName?: string
+}
 
 export interface RegisteredUser extends User {
   createdAt?: string
@@ -52,6 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             name: p.name || '',
             email: p.email,
             role: p.role || 'SDR',
+            companyId: p.company_id,
             createdAt: p.created_at,
           })),
         )
@@ -61,6 +67,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
+  const loadUserContext = async (sessionUser: any) => {
+    try {
+      const { data: profile } = (await supabase
+        .from('profiles')
+        .select('*, companies:company_id(name)')
+        .eq('id', sessionUser.id)
+        .single()) as any
+
+      setUser({
+        id: sessionUser.id,
+        name:
+          profile?.name ||
+          sessionUser.user_metadata?.name ||
+          sessionUser.email?.split('@')[0] ||
+          'User',
+        email: sessionUser.email || '',
+        role:
+          profile?.role ||
+          sessionUser.user_metadata?.role ||
+          (sessionUser.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR'),
+        companyId: profile?.company_id,
+        companyName: profile?.companies?.name || 'Meu Escritório',
+      })
+      await fetchUsers()
+    } catch (e) {
+      console.error('Error loading user context', e)
+    }
+  }
+
   useEffect(() => {
     supabase.auth
       .getSession()
@@ -68,25 +103,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (error) {
           console.error('Auth store getSession error:', error)
           if (error.message.toLowerCase().includes('refresh token')) {
-            // Refresh token expirado/inválido: limpar a sessão ativa no cliente
             supabase.auth.signOut().catch(() => {})
           }
-        }
-
-        if (session?.user && !error) {
-          setUser({
-            id: session.user.id,
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-            email: session.user.email || '',
-            role:
-              session.user.user_metadata?.role ||
-              (session.user.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR'),
-          })
-          fetchUsers()
+          setUser(null)
+          setIsLoading(false)
+        } else if (session?.user) {
+          loadUserContext(session.user).then(() => setIsLoading(false))
         } else {
           setUser(null)
+          setIsLoading(false)
         }
-        setIsLoading(false)
       })
       .catch((err) => {
         console.error('Auth store getSession catch:', err)
@@ -100,21 +126,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (event === 'SIGNED_OUT') {
         setUser(null)
         setUsers([])
+        setIsLoading(false)
       } else if (session?.user) {
-        setUser({
-          id: session.user.id,
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email || '',
-          role:
-            session.user.user_metadata?.role ||
-            (session.user.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR'),
-        })
-        fetchUsers()
+        loadUserContext(session.user).then(() => setIsLoading(false))
       } else {
         setUser(null)
         setUsers([])
+        setIsLoading(false)
       }
-      setIsLoading(false)
     })
 
     return () => subscription.unsubscribe()
@@ -123,7 +142,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, pass: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass })
     if (error) {
-      // Provide a clearer translation for Invalid login credentials
       if (error.message.includes('Invalid login') || error.status === 400) {
         throw new Error('Email ou senha inválidos.')
       }
@@ -135,7 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { error } = await supabase.auth.signUp({
       email,
       password: pass,
-      options: { data: { name, role: 'SDR' } },
+      options: { data: { name, role: 'Admin' } },
     })
     if (error) {
       if ((error as any).code === 'over_email_send_rate_limit' || error.status === 429) {
@@ -153,9 +171,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const adminCreateUser = async (data: any) => {
+    const payload = { ...data, company_id: user?.companyId }
     const { data: resData, error } = await supabase.functions.invoke('admin-users', {
       method: 'POST',
-      body: data,
+      body: payload,
     })
     if (error || resData?.error)
       throw new Error(resData?.error || error?.message || 'Erro ao criar usuário')

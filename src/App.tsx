@@ -10,6 +10,7 @@ import { AuthProvider as SupabaseAuthProvider } from '@/hooks/use-auth'
 import { ClientProvider } from '@/stores/useClientStore'
 import { RequireAuth } from '@/components/auth/RequireAuth'
 import { RequireAdmin } from '@/components/auth/RequireAdmin'
+import { RequireSuperAdmin } from '@/components/auth/RequireSuperAdmin'
 
 import Layout from './components/Layout'
 import Index from './pages/Index'
@@ -18,6 +19,7 @@ import Clients from './pages/Clients'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Administration from './pages/Administration'
+import SuperAdmin from './pages/SuperAdmin'
 import Tasks from './pages/Tasks'
 import Conversations from './pages/Conversations'
 import NotFound from './pages/NotFound'
@@ -36,11 +38,9 @@ const App = () => (
                   <Toaster />
                   <Sonner position="top-center" expand={true} richColors />
                   <Routes>
-                    {/* Public Routes - Defined explicitly before any layout wrappers */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
 
-                    {/* Protected Routes enclosed in Layout */}
                     <Route
                       path="/"
                       element={
@@ -64,8 +64,14 @@ const App = () => (
                           </RequireAdmin>
                         }
                       />
-
-                      {/* Catch-all Route for 404 - Placed securely inside protected routes */}
+                      <Route
+                        path="master"
+                        element={
+                          <RequireSuperAdmin>
+                            <SuperAdmin />
+                          </RequireSuperAdmin>
+                        }
+                      />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>
