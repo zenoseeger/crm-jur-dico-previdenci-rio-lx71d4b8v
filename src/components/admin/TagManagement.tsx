@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
 import {
   Table,
   TableBody,
@@ -28,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Edit2, Trash2, Plus, Tag as TagIcon } from 'lucide-react'
+import { Edit2, Trash2, Plus, Tag as TagIcon, Loader2 } from 'lucide-react'
 
 const CATEGORIES: TagCategory[] = [
   'Tipo de Benefício',
@@ -41,6 +42,7 @@ export function TagManagement() {
   const { tags, addTag, updateTag, deleteTag } = useAdminStore()
   const [isOpen, setIsOpen] = useState(false)
   const [editingTag, setEditingTag] = useState<TagDef | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -59,13 +61,29 @@ export function TagManagement() {
     setIsOpen(true)
   }
 
-  const handleSubmit = () => {
-    if (editingTag) {
-      updateTag(editingTag.id, formData)
-    } else {
-      addTag(formData)
+  const handleSubmit = async () => {
+    if (!formData.name.trim()) {
+      toast.error('O nome da tag é obrigatório.')
+      return
     }
-    setIsOpen(false)
+
+    setLoading(true)
+    try {
+      if (editingTag) {
+        await updateTag(editingTag.id, { ...formData, name: formData.name.trim() })
+      } else {
+        await addTag({ ...formData, name: formData.name.trim() })
+      }
+      setIsOpen(false)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta tag?')) {
+      await deleteTag(id)
+    }
   }
 
   return (
@@ -150,10 +168,15 @@ export function TagManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsOpen(false)}>
+              <Button variant="outline" onClick={() => setIsOpen(false)} disabled={loading}>
                 Cancelar
               </Button>
-              <Button onClick={handleSubmit} className="bg-slate-900">
+              <Button
+                onClick={handleSubmit}
+                className="bg-slate-900"
+                disabled={loading || !formData.name.trim()}
+              >
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Salvar Tag
               </Button>
             </DialogFooter>
@@ -185,12 +208,19 @@ export function TagManagement() {
                   <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(tag)}>
                     <Edit2 className="w-4 h-4 text-muted-foreground" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => deleteTag(tag.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(tag.id)}>
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
                 </TableCell>
               </TableRow>
             ))}
+            {tags.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                  Nenhuma tag cadastrada.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>

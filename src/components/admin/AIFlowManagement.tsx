@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
 import {
   Table,
   TableBody,
@@ -30,13 +31,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Edit2, Trash2, Plus, X, Paperclip, Video, Headphones } from 'lucide-react'
+import { Edit2, Trash2, Plus, X, Paperclip, Video, Headphones, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export function AIFlowManagement() {
   const { aiFlows, tags, addAIFlow, updateAIFlow, deleteAIFlow } = useAdminStore()
   const [isOpen, setIsOpen] = useState(false)
   const [editingFlow, setEditingFlow] = useState<AIFlow | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const [formData, setFormData] = useState<Omit<AIFlow, 'id'>>({
     name: '',
@@ -59,11 +61,28 @@ export function AIFlowManagement() {
     setIsOpen(true)
   }
 
-  const handleSubmit = () => {
-    if (!formData.name || !formData.triggerTagName) return
-    if (editingFlow) updateAIFlow(editingFlow.id, formData)
-    else addAIFlow(formData)
-    setIsOpen(false)
+  const handleSubmit = async () => {
+    if (!formData.name.trim() || !formData.triggerTagName) {
+      toast.error('Preencha os campos obrigatórios.')
+      return
+    }
+    setLoading(true)
+    try {
+      if (editingFlow) {
+        await updateAIFlow(editingFlow.id, formData)
+      } else {
+        await addAIFlow(formData)
+      }
+      setIsOpen(false)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este fluxo?')) {
+      await deleteAIFlow(id)
+    }
   }
 
   const addStep = () => {
@@ -289,14 +308,15 @@ export function AIFlowManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsOpen(false)}>
+              <Button variant="outline" onClick={() => setIsOpen(false)} disabled={loading}>
                 Cancelar
               </Button>
               <Button
                 onClick={handleSubmit}
                 className="bg-slate-900"
-                disabled={!formData.name || !formData.triggerTagName}
+                disabled={loading || !formData.name.trim() || !formData.triggerTagName}
               >
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Salvar Fluxo
               </Button>
             </DialogFooter>
@@ -331,12 +351,19 @@ export function AIFlowManagement() {
                   <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(flow)}>
                     <Edit2 className="w-4 h-4 text-muted-foreground" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => deleteAIFlow(flow.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(flow.id)}>
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
                 </TableCell>
               </TableRow>
             ))}
+            {aiFlows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                  Nenhum fluxo IA cadastrado.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>

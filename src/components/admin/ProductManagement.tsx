@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
 import {
   Table,
   TableBody,
@@ -31,7 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Edit2, Trash2, Plus } from 'lucide-react'
+import { Edit2, Trash2, Plus, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -40,6 +41,7 @@ export function ProductManagement() {
   const [isOpen, setIsOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<BenefitType | null>(null)
   const [productName, setProductName] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [productToDelete, setProductToDelete] = useState<string | null>(null)
@@ -55,14 +57,22 @@ export function ProductManagement() {
     setIsOpen(true)
   }
 
-  const handleSubmit = () => {
-    if (!productName.trim()) return
-    if (editingProduct) {
-      updateBenefitType(editingProduct.id, productName.trim())
-    } else {
-      addBenefitType(productName.trim())
+  const handleSubmit = async () => {
+    if (!productName.trim()) {
+      toast.error('O nome do produto é obrigatório.')
+      return
     }
-    setIsOpen(false)
+    setLoading(true)
+    try {
+      if (editingProduct) {
+        await updateBenefitType(editingProduct.id, productName.trim())
+      } else {
+        await addBenefitType(productName.trim())
+      }
+      setIsOpen(false)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const confirmDelete = (id: string) => {
@@ -70,12 +80,17 @@ export function ProductManagement() {
     setDeleteDialogOpen(true)
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (productToDelete) {
-      deleteBenefitType(productToDelete)
+      setLoading(true)
+      try {
+        await deleteBenefitType(productToDelete)
+      } finally {
+        setLoading(false)
+        setDeleteDialogOpen(false)
+        setProductToDelete(null)
+      }
     }
-    setDeleteDialogOpen(false)
-    setProductToDelete(null)
   }
 
   return (
@@ -109,14 +124,15 @@ export function ProductManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsOpen(false)}>
+              <Button variant="outline" onClick={() => setIsOpen(false)} disabled={loading}>
                 Cancelar
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!productName.trim()}
+                disabled={loading || !productName.trim()}
                 className="bg-slate-900"
               >
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Salvar
               </Button>
             </DialogFooter>
@@ -170,11 +186,13 @@ export function ProductManagement() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={loading}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
