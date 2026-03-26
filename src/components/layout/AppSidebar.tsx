@@ -10,7 +10,6 @@ import {
   ListTodo,
   LogOut,
   MessageSquare,
-  Building2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -43,7 +42,6 @@ export function AppSidebar() {
   const location = useLocation()
   const { user } = useAuthStore()
   const isAdmin = user?.role === 'Admin'
-  const isSuperAdmin = user?.email === 'zhseeger@gmail.com'
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
@@ -55,12 +53,6 @@ export function AppSidebar() {
           <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
             <span className="font-bold tracking-tight dark:text-slate-100 truncate text-[#e1e1e1] leading-tight shadow-[0px_0px_6px_0px_#101c3f]">
               PreviCRM
-            </span>
-            <span
-              className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5 font-medium"
-              title={(user as any)?.companyName}
-            >
-              {(user as any)?.companyName || 'Meu Escritório'}
             </span>
           </div>
         </div>
@@ -94,29 +86,6 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-
-              {isSuperAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location.pathname === '/master'}
-                    tooltip="Master Admin"
-                  >
-                    <Link to="/master">
-                      <Building2 className={cn('w-4 h-4 text-purple-500')} />
-                      <span
-                        className={cn(
-                          location.pathname === '/master'
-                            ? 'font-medium text-purple-600 dark:text-purple-400'
-                            : 'text-purple-600 dark:text-purple-400',
-                        )}
-                      >
-                        Painel Master
-                      </span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

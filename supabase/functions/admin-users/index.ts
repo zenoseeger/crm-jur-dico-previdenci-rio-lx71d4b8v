@@ -53,25 +53,16 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const { data: callerProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('company_id')
-      .eq('id', user.id)
-      .single()
-    const callerCompanyId = callerProfile?.company_id
-
     if (req.method === 'POST') {
-      const { email, password, name, role, company_id } = await req.json()
+      const { email, password, name, role } = await req.json()
       const cleanEmail = String(email).trim().toLowerCase()
       const cleanName = String(name).trim()
-
-      const targetCompanyId = isSuperAdmin && company_id ? company_id : callerCompanyId
 
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email: cleanEmail,
         password: password,
         email_confirm: true,
-        user_metadata: { name: cleanName, role: role || 'SDR', company_id: targetCompanyId },
+        user_metadata: { name: cleanName, role: role || 'SDR' },
       })
       if (error) throw error
 
@@ -81,7 +72,6 @@ Deno.serve(async (req: Request) => {
           email: cleanEmail,
           name: cleanName,
           role: role || 'SDR',
-          company_id: targetCompanyId,
         })
       }
 
@@ -94,20 +84,6 @@ Deno.serve(async (req: Request) => {
       const { id, email, password, name, role } = await req.json()
       const cleanEmail = String(email).trim().toLowerCase()
       const cleanName = String(name).trim()
-
-      if (!isSuperAdmin) {
-        const { data: targetProfile } = await supabaseAdmin
-          .from('profiles')
-          .select('company_id')
-          .eq('id', id)
-          .single()
-        if (targetProfile?.company_id !== callerCompanyId) {
-          return new Response(JSON.stringify({ error: 'Unauthorized for this company' }), {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          })
-        }
-      }
 
       const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, {
         email: cleanEmail,
@@ -144,20 +120,6 @@ Deno.serve(async (req: Request) => {
     if (req.method === 'DELETE') {
       const { id } = await req.json()
       if (!id) throw new Error('Missing user id')
-
-      if (!isSuperAdmin) {
-        const { data: targetProfile } = await supabaseAdmin
-          .from('profiles')
-          .select('company_id')
-          .eq('id', id)
-          .single()
-        if (targetProfile?.company_id !== callerCompanyId) {
-          return new Response(JSON.stringify({ error: 'Unauthorized for this company' }), {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          })
-        }
-      }
 
       const { error } = await supabaseAdmin.auth.admin.deleteUser(id)
       if (error) throw error

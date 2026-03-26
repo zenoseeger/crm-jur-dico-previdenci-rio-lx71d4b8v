@@ -10,10 +10,7 @@ import { User as BaseUser } from '@/types'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase/client'
 
-export interface User extends BaseUser {
-  companyId?: string
-  companyName?: string
-}
+export interface User extends BaseUser {}
 
 export interface RegisteredUser extends User {
   createdAt?: string
@@ -57,7 +54,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             name: p.name || '',
             email: p.email,
             role: p.role || 'SDR',
-            companyId: p.company_id,
             createdAt: p.created_at,
           })),
         )
@@ -71,7 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data: profile } = (await supabase
         .from('profiles')
-        .select('*, companies:company_id(name)')
+        .select('*')
         .eq('id', sessionUser.id)
         .single()) as any
 
@@ -87,8 +83,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           profile?.role ||
           sessionUser.user_metadata?.role ||
           (sessionUser.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR'),
-        companyId: profile?.company_id,
-        companyName: profile?.companies?.name || 'Meu Escritório',
       })
       await fetchUsers()
     } catch (e) {
@@ -171,10 +165,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const adminCreateUser = async (data: any) => {
-    const payload = { ...data, company_id: user?.companyId }
     const { data: resData, error } = await supabase.functions.invoke('admin-users', {
       method: 'POST',
-      body: payload,
+      body: data,
     })
     if (error || resData?.error)
       throw new Error(resData?.error || error?.message || 'Erro ao criar usuário')
