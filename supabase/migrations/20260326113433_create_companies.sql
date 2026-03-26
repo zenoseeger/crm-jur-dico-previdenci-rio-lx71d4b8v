@@ -1,4 +1,4 @@
-DO $$
+DO $
 BEGIN
   -- Create companies table if not exists
   CREATE TABLE IF NOT EXISTS public.companies (
@@ -79,7 +79,7 @@ BEGIN
     ALTER TABLE public.task_automations ADD COLUMN company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE;
   END IF;
 
-END $$;
+END $;
 
 -- Ensure companies RLS is set up
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
