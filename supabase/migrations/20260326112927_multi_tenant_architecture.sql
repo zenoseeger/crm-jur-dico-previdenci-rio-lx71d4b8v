@@ -1,4 +1,4 @@
-DO $$ 
+DO $ 
 DECLARE
   default_company_id UUID;
 BEGIN
@@ -84,30 +84,30 @@ BEGIN
   UPDATE public.whatsapp_logs SET company_id = default_company_id WHERE company_id IS NULL;
   ALTER TABLE public.whatsapp_logs ALTER COLUMN company_id SET NOT NULL;
 
-END $$;
+END $;
 
 -- Triggers and Functions
 CREATE OR REPLACE FUNCTION public.get_user_company_id()
-RETURNS uuid AS $$
+RETURNS uuid AS $
   SELECT company_id FROM public.profiles WHERE id = auth.uid();
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.is_super_admin()
-RETURNS boolean AS $$
+RETURNS boolean AS $
   SELECT is_super_admin FROM public.profiles WHERE id = auth.uid();
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.set_company_id()
-RETURNS trigger AS $$
+RETURNS trigger AS $
 BEGIN
   IF NEW.company_id IS NULL THEN
     NEW.company_id := public.get_user_company_id();
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
-DO $$ 
+DO $ 
 DECLARE
   t text;
   tables text[] := ARRAY['leads', 'clients', 'documents', 'messages', 'pipelines', 'pipeline_stages', 'tags', 'task_automations', 'ai_configs', 'ai_flows', 'benefit_types', 'whatsapp_configs', 'whatsapp_logs'];
@@ -117,10 +117,10 @@ BEGIN
     EXECUTE format('DROP TRIGGER IF EXISTS set_company_id_trigger ON public.%I', t);
     EXECUTE format('CREATE TRIGGER set_company_id_trigger BEFORE INSERT ON public.%I FOR EACH ROW EXECUTE FUNCTION public.set_company_id()', t);
   END LOOP;
-END $$;
+END $;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
+RETURNS trigger AS $
 DECLARE
   new_company_id UUID;
 BEGIN
@@ -146,10 +146,10 @@ BEGIN
     company_id = COALESCE(EXCLUDED.company_id, public.profiles.company_id);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user_seed()
-RETURNS trigger AS $$
+RETURNS trigger AS $
 DECLARE
   user_company_id UUID;
 BEGIN
@@ -194,7 +194,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Recreate Seed Trigger to ensure it runs AFTER handle_new_user
 DROP TRIGGER IF EXISTS on_auth_user_created_seed ON auth.users;
@@ -204,7 +204,7 @@ CREATE TRIGGER z_on_auth_user_created_seed
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_seed();
 
 -- RLS Policies
-DO $$ 
+DO $ 
 DECLARE
   t text;
   tables text[] := ARRAY['profiles', 'leads', 'clients', 'documents', 'messages', 'pipelines', 'pipeline_stages', 'tags', 'task_automations', 'ai_configs', 'ai_flows', 'benefit_types', 'whatsapp_configs', 'whatsapp_logs'];
@@ -234,4 +234,4 @@ BEGIN
       EXECUTE format('CREATE POLICY "tenant_isolation_%I" ON public.%I FOR ALL TO authenticated USING (company_id = public.get_user_company_id() OR public.is_super_admin()) WITH CHECK (company_id = public.get_user_company_id() OR public.is_super_admin())', t, t);
     END IF;
   END LOOP;
-END $$;
+END $;
