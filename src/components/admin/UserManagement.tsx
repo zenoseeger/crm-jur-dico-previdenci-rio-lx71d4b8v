@@ -34,10 +34,13 @@ import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 
 export function UserManagement() {
-  const { users, adminCreateUser, adminUpdateUser, adminDeleteUser } = useAuthStore()
+  const { users, adminCreateUser, adminUpdateUser, adminDeleteUser, user, companies } =
+    useAuthStore()
   const [isOpen, setIsOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null)
   const [loading, setLoading] = useState(false)
+
+  const isSuperAdmin = user?.isSuperAdmin
 
   const [formData, setFormData] = useState({
     name: '',
@@ -45,21 +48,30 @@ export function UserManagement() {
     role: 'SDR' as UserRole,
     password: '',
     confirmPassword: '',
+    companyId: user?.companyId || '',
   })
 
-  const handleOpenDialog = (user?: RegisteredUser) => {
-    if (user) {
-      setEditingUser(user)
+  const handleOpenDialog = (targetUser?: RegisteredUser) => {
+    if (targetUser) {
+      setEditingUser(targetUser)
       setFormData({
-        name: user.name,
-        email: user.email,
-        role: user.role as UserRole,
+        name: targetUser.name,
+        email: targetUser.email,
+        role: targetUser.role as UserRole,
+        companyId: targetUser.companyId || user?.companyId || '',
         password: '',
         confirmPassword: '',
       })
     } else {
       setEditingUser(null)
-      setFormData({ name: '', email: '', role: 'SDR', password: '', confirmPassword: '' })
+      setFormData({
+        name: '',
+        email: '',
+        role: 'SDR',
+        companyId: user?.companyId || '',
+        password: '',
+        confirmPassword: '',
+      })
     }
     setIsOpen(true)
   }
@@ -87,6 +99,11 @@ export function UserManagement() {
       return
     }
 
+    if (isSuperAdmin && !formData.companyId) {
+      toast.error('Selecione uma empresa para vincular este usuário.')
+      return
+    }
+
     setLoading(true)
     try {
       if (editingUser) {
@@ -95,17 +112,24 @@ export function UserManagement() {
           email: cleanEmail,
           role: formData.role,
         }
+        if (isSuperAdmin) {
+          payload.company_id = formData.companyId
+        }
         if (formData.password) {
           payload.password = formData.password
         }
         await adminUpdateUser(editingUser.id, payload)
       } else {
-        await adminCreateUser({
+        const payload: any = {
           name: formData.name.trim(),
           email: cleanEmail,
           role: formData.role,
           password: formData.password,
-        })
+        }
+        if (isSuperAdmin) {
+          payload.company_id = formData.companyId
+        }
+        await adminCreateUser(payload)
       }
       setIsOpen(false)
     } catch (error: any) {
@@ -155,6 +179,28 @@ export function UserManagement() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
+
+              {isSuperAdmin && (
+                <div className="space-y-2">
+                  <Label>Empresa Vinculada *</Label>
+                  <Select
+                    value={formData.companyId}
+                    onValueChange={(val) => setFormData({ ...formData, companyId: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a empresa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>
                   {editingUser ? 'Nova Senha (deixe em branco para não alterar)' : 'Senha *'}
@@ -214,6 +260,7 @@ export function UserManagement() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>E-mail</TableHead>
+              {isSuperAdmin && <TableHead>Empresa</TableHead>}
               <TableHead>Função</TableHead>
               <TableHead>Data de Registro</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -224,6 +271,9 @@ export function UserManagement() {
               <TableRow key={u.id}>
                 <TableCell className="font-medium">{u.name}</TableCell>
                 <TableCell>{u.email}</TableCell>
+                {isSuperAdmin && (
+                  <TableCell className="text-muted-foreground">{u.companyName || '-'}</TableCell>
+                )}
                 <TableCell>
                   <Badge
                     variant="outline"
@@ -253,7 +303,10 @@ export function UserManagement() {
             ))}
             {users.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                <TableCell
+                  colSpan={isSuperAdmin ? 6 : 5}
+                  className="text-center py-6 text-muted-foreground"
+                >
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>

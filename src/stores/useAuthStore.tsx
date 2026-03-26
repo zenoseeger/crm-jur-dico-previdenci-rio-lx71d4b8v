@@ -6,25 +6,28 @@ import React, {
   useEffect,
   useCallback,
 } from 'react'
-import { User as BaseUser } from '@/types'
+import { User, Company } from '@/types'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase/client'
 
-export interface User extends BaseUser {}
-
 export interface RegisteredUser extends User {
   createdAt?: string
+  companyName?: string
 }
 
 interface AuthStore {
   user: User | null
+  company: Company | null
   users: RegisteredUser[]
+  companies: Company[]
   isAuthenticated: boolean
   isLoading: boolean
   login: (email: string, pass: string) => Promise<void>
   register: (name: string, email: string, pass: string) => Promise<void>
   logout: () => void
   fetchUsers: () => Promise<void>
+  fetchCompanies: () => Promise<void>
+  createCompany: (name: string) => Promise<void>
   adminCreateUser: (data: any) => Promise<void>
   adminUpdateUser: (id: string, data: any) => Promise<void>
   adminDeleteUser: (id: string) => Promise<void>
@@ -34,14 +37,16 @@ const AuthContext = createContext<AuthStore | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
+  const [company, setCompany] = useState<Company | null>(null)
   const [users, setUsers] = useState<RegisteredUser[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const fetchUsers = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, companies(name)')
         .order('created_at', { ascending: false })
       if (error) {
         console.error('Error fetching profiles:', error)
@@ -54,6 +59,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             name: p.name || '',
             email: p.email,
             role: p.role || 'SDR',
+            companyId: p.company_id,
+            companyName: p.companies?.name,
             createdAt: p.created_at,
           })),
         )
@@ -63,13 +70,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
+  const fetchCompanies = useCallback(async () => {
+    const { data } = await supabase
+      .from('companies')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (data) setCompanies(data as any[])
+  }, [])
+
+  const createCompany = async (name: string) => {
+    const { data, error } = await supabase
+      .from('companies')
+      .insert({ name } as any)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    setCompanies((p) => [data as any, ...p])
+    toast.success('Empresa criada com sucesso!')
+  }
+
   const loadUserContext = async (sessionUser: any) => {
     try {
-      const { data: profile } = (await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', sessionUser.id)
-        .single()) as any
+        .single()
+
+      const isSuper = profile?.is_super_admin || sessionUser.email === 'zhseeger@gmail.com'
 
       setUser({
         id: sessionUser.id,
@@ -79,11 +107,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           sessionUser.email?.split('@')[0] ||
           'User',
         email: sessionUser.email || '',
-        role:
-          profile?.role ||
-          sessionUser.user_metadata?.role ||
-          (sessionUser.email === 'zhseeger@gmail.com' ? 'Admin' : 'SDR'),
+        role: profile?.role || sessionUser.user_metadata?.role || (isSuper ? 'Admin' : 'SDR'),
+        companyId: profile?.company_id,
+        isSuperAdmin: isSuper,
       })
+
+      if (profile?.company_id) {
+        const { data: companyData } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', profile.company_id)
+          .single()
+        if (companyData) setCompany(companyData as any)
+      }
+
+      if (isSuper) {
+        await fetchCompanies()
+      }
+
       await fetchUsers()
     } catch (e) {
       console.error('Error loading user context', e)
@@ -100,17 +141,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             supabase.auth.signOut().catch(() => {})
           }
           setUser(null)
+          setCompany(null)
           setIsLoading(false)
         } else if (session?.user) {
           loadUserContext(session.user).then(() => setIsLoading(false))
         } else {
           setUser(null)
+          setCompany(null)
           setIsLoading(false)
         }
       })
       .catch((err) => {
         console.error('Auth store getSession catch:', err)
         setUser(null)
+        setCompany(null)
         setIsLoading(false)
       })
 
@@ -119,19 +163,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         setUser(null)
+        setCompany(null)
         setUsers([])
+        setCompanies([])
         setIsLoading(false)
       } else if (session?.user) {
         loadUserContext(session.user).then(() => setIsLoading(false))
       } else {
         setUser(null)
+        setCompany(null)
         setUsers([])
+        setCompanies([])
         setIsLoading(false)
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [fetchUsers])
+  }, [fetchUsers, fetchCompanies])
 
   const login = async (email: string, pass: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass })
@@ -162,6 +210,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     await supabase.auth.signOut()
     setUser(null)
+    setCompany(null)
+    setCompanies([])
+    setUsers([])
   }
 
   const adminCreateUser = async (data: any) => {
@@ -203,13 +254,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
+        company,
         users,
+        companies,
         isAuthenticated: !!user,
         isLoading,
         login,
         register,
         logout,
         fetchUsers,
+        fetchCompanies,
+        createCompany,
         adminCreateUser,
         adminUpdateUser,
         adminDeleteUser,

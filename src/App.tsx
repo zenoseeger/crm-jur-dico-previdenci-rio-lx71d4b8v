@@ -10,6 +10,7 @@ import { AuthProvider as SupabaseAuthProvider } from '@/hooks/use-auth'
 import { ClientProvider } from '@/stores/useClientStore'
 import { RequireAuth } from '@/components/auth/RequireAuth'
 import { RequireAdmin } from '@/components/auth/RequireAdmin'
+import { RequireSuperAdmin } from '@/components/auth/RequireSuperAdmin'
 
 import Layout from './components/Layout'
 import Index from './pages/Index'
@@ -18,6 +19,7 @@ import Clients from './pages/Clients'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Administration from './pages/Administration'
+import SuperAdmin from './pages/SuperAdmin'
 import Tasks from './pages/Tasks'
 import Conversations from './pages/Conversations'
 import NotFound from './pages/NotFound'
@@ -60,6 +62,14 @@ const App = () => (
                           <RequireAdmin>
                             <Administration />
                           </RequireAdmin>
+                        }
+                      />
+                      <Route
+                        path="super-admin"
+                        element={
+                          <RequireSuperAdmin>
+                            <SuperAdmin />
+                          </RequireSuperAdmin>
                         }
                       />
                       <Route path="*" element={<NotFound />} />

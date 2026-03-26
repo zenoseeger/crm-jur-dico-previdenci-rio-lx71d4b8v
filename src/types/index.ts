@@ -2,6 +2,13 @@ export type Stage = string
 
 export type HeatScore = 'Quente' | 'Morno' | 'Frio'
 
+export interface Company {
+  id: string
+  name: string
+  createdAt: string
+  status: string
+}
+
 export interface TaskTemplate {
   id: string
   title: string
@@ -117,6 +124,8 @@ export interface User {
   name: string
   email: string
   role: UserRole
+  companyId?: string
+  isSuperAdmin?: boolean
 }
 
 export type TagCategory =
